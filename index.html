@@ -323,10 +323,40 @@
             color: #666;
         }
 
-        .loading {
+        .loading-modern {
             text-align: center;
-            padding: 40px;
-            color: #333;
+            padding: 60px 40px;
+            color: white;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px;
+            margin: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255,255,255,0.3);
+            border-left: 4px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-modern h3 {
+            margin-bottom: 10px;
+            font-size: 1.5rem;
+            color: white;
+        }
+
+        .loading-modern p {
+            opacity: 0.9;
+            font-size: 1rem;
         }
 
         .geocoding-status {

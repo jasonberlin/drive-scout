@@ -779,7 +779,7 @@
                 section: section,
                 enrollment: 2000,
                 hasQuad: true,
-                suitability: "High", // Default to High instead of Medium
+                suitability: "High",
                 type: "College",
                 publicPrivate: "Public"
             };
@@ -849,19 +849,38 @@
                 college.streetAddress = values[1] || '';
             }
 
-            // SPEED OPTIMIZATION: Try known coordinates first, but ALWAYS geocode if needed
+            // PRIORITY #1: Check manual coordinates database FIRST
             const knownCoords = findKnownCoordinates(college.name);
             if (knownCoords) {
                 college.lat = knownCoords[0];
                 college.lng = knownCoords[1];
-                college.geocodingSource = 'Known database';
-                console.log('⚡ INSTANT coordinates for ' + college.name);
-            } else {
-                // IMPORTANT: Still geocode unknown colleges, but don't wait
-                console.log('🔍 Will geocode ' + college.name + ' in background');
-                await addCoordinatesImproved(college);
+                college.geocodingSource = 'Manual override database';
+                console.log('⚡ MANUAL OVERRIDE: ' + college.name + ' → ' + college.lat + ', ' + college.lng);
+                return college;
             }
 
+            // PRIORITY #2: For CA-21 colleges with wrong addresses, use EXACT coordinates
+            if (college.name.includes('Fresno City College')) {
+                college.lat = 36.7315;
+                college.lng = -119.7985;
+                college.geocodingSource = 'Manual fix for Fresno City College';
+                console.log('🔧 MANUAL FIX: Fresno City College → 36.7315, -119.7985');
+                return college;
+            }
+
+            if (college.name.includes('College of the Sequoias')) {
+                if (college.address && college.address.includes('Tulare')) {
+                    college.lat = 36.2077;
+                    college.lng = -119.3473;
+                    college.geocodingSource = 'Manual fix for College of the Sequoias - Tulare';
+                    console.log('🔧 MANUAL FIX: College of the Sequoias Tulare → 36.2077, -119.3473');
+                    return college;
+                }
+            }
+
+            // PRIORITY #3: Only geocode if no manual coordinates exist
+            console.log('🔍 No manual coordinates found, will geocode ' + college.name);
+            await addCoordinatesImproved(college);
             return college;
         }
 

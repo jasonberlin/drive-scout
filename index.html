@@ -880,7 +880,7 @@
         async function addCoordinatesImproved(college) {
             console.log('🗺️ Starting coordinate lookup for:', college.name);
             
-            // SPECIAL HANDLING for ASU Tempe, try building-specific queries first
+            // SPECIAL CASE: For ASU Tempe, try building-specific queries first
             if (college.name.includes('Arizona State University') && college.name.includes('Tempe')) {
                 console.log('🎯 SPECIAL ASU TEMPE HANDLING - trying building queries first');
                 
@@ -910,7 +910,7 @@
                 console.log('⚠️ All special ASU Tempe queries failed, trying regular address queries...');
             }
             
-            // SPECIAL HANDLING for Northern Arizona University
+            // SPECIAL CASE: For Northern Arizona University
             if (college.name.includes('Northern Arizona University')) {
                 console.log('🎯 SPECIAL NAU HANDLING - trying building queries first');
                 
@@ -938,6 +938,41 @@
                 }
                 
                 console.log('⚠️ All special NAU queries failed, trying regular address queries...');
+            }
+
+            // SPECIAL CASE: For problematic CA-21 colleges
+            if (college.name.includes('Fresno City College') || college.name.includes('College of the Sequoias')) {
+                console.log('🎯 SPECIAL CA-21 HANDLING - trying address-only queries first');
+                
+                const addressOnlyQueries = [];
+                
+                if (college.name.includes('Fresno City College')) {
+                    addressOnlyQueries.push('1101 E University Ave, Fresno, CA 93741');
+                    addressOnlyQueries.push('1101 University Avenue, Fresno, California');
+                }
+                
+                if (college.name.includes('College of the Sequoias')) {
+                    addressOnlyQueries.push('4999 E Bardsley Ave, Tulare, CA 93274');
+                    addressOnlyQueries.push('4999 East Bardsley Avenue, Tulare, California');
+                }
+                
+                for (let i = 0; i < addressOnlyQueries.length; i++) {
+                    const query = addressOnlyQueries[i];
+                    console.log('🔍 ADDRESS-ONLY query attempt ' + (i + 1) + ' for ' + college.name + ': ' + query);
+                    
+                    const coords = await geocodeAddressExact(query, college);
+                    if (coords && coords.lat && coords.lng) {
+                        college.lat = coords.lat;
+                        college.lng = coords.lng;
+                        college.geocodingSource = 'ADDRESS-ONLY: ' + query;
+                        console.log('✅ SUCCESS with ADDRESS-ONLY query! Geocoded ' + college.name + ' to: ' + college.lat + ', ' + college.lng);
+                        return;
+                    }
+                    
+                    await delay(750);
+                }
+                
+                console.log('⚠️ All address-only queries failed, trying regular address queries...');
             }
             
             // Regular address geocoding for all colleges

@@ -485,9 +485,10 @@
             'California State University Stanislaus - Stockton Campus': [37.9577, -121.2908],
             'California State University Stanislaus - Main Campus': [37.5289, -120.8444],
 
-            // CA-22 colleges
-            'Taft College': [35.149517884255346, -119.4597667], // Manual override coordinates
-            'College of the Sequoias - Hanford Campus': [36.33348317655784, -119.68999451405378], // Manual override: 925 13th Ave, Hanford, CA 93230
+            // CA-41 colleges
+            'UC Riverside': [33.97350351814895, -117.32982172444999], // Manual override coordinates
+            'University of California Riverside': [33.97350351814895, -117.32982172444999], // Alternative name
+            'Mt. San Jacinto College - San Jacinto Campus': [33.806990713859385, -116.97132456626241], // Manual override coordinates
         };
 
         // State and city coordinates for fallbacks
@@ -883,11 +884,20 @@
                 return college;
             }
 
-            if (college.name.includes('College of the Sequoias') && college.name.includes('Hanford')) {
-                college.lat = 36.33348317655784;
-                college.lng = -119.68999451405378;
-                college.geocodingSource = 'Manual fix for College of the Sequoias - Hanford Campus';
-                console.log('🔧 MANUAL FIX: College of the Sequoias Hanford → 36.33348317655784, -119.68999451405378');
+            // PRIORITY #4: For CA-41 colleges with wrong addresses, use EXACT coordinates
+            if (college.name.includes('UC Riverside') || college.name.includes('University of California') && college.name.includes('Riverside')) {
+                college.lat = 33.97350351814895;
+                college.lng = -117.32982172444999;
+                college.geocodingSource = 'Manual fix for UC Riverside';
+                console.log('🔧 MANUAL FIX: UC Riverside → 33.97350351814895, -117.32982172444999');
+                return college;
+            }
+
+            if (college.name.includes('Mt. San Jacinto College') && college.name.includes('San Jacinto')) {
+                college.lat = 33.806990713859385;
+                college.lng = -116.97132456626241;
+                college.geocodingSource = 'Manual fix for Mt. San Jacinto College - San Jacinto Campus';
+                console.log('🔧 MANUAL FIX: Mt. San Jacinto College San Jacinto → 33.806990713859385, -116.97132456626241');
                 return college;
             }
 

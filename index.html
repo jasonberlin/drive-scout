@@ -715,8 +715,8 @@
         function displayClosestDistricts(districts) {
             const container = document.getElementById('closestDistricts');
             
-            let html = '<div class="closest-districts-list" style="background: rgba(255,255,255,0.95); border-radius: 15px; padding: 25px; margin-top: 20px; box-shadow: 0 8px 32px rgba(0,0,0,0.1);">';
-            html += '<h3 style="color: #333; margin-bottom: 20px; font-size: 1.5rem;">🎯 Your 8 Closest Swing Districts</h3>';
+            let html = '<div class="closest-districts-list" style="margin-top: 20px;">';
+            html += '<h3 style="color: white; margin-bottom: 20px; font-size: 1.5rem; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);">🎯 Your 8 Closest Swing Districts</h3>';
             
             districts.forEach((district, index) => {
                 // Set background color based on current representative's party

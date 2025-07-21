@@ -485,13 +485,9 @@
             'California State University Stanislaus - Stockton Campus': [37.9577, -121.2908],
             'California State University Stanislaus - Main Campus': [37.5289, -120.8444],
 
-            // CA-21 colleges
-            'California State University Fresno': [36.8129, -119.7462], // Fresno State - main campus
-            'Fresno State': [36.8129, -119.7462], // Alternative name for Fresno State
-            'Fresno City College': [36.7315, -119.7985], // FCC main campus
-            'College of the Sequoias': [36.2077, -119.3473], // 4999 E Bardsley Ave, Tulare, CA 93274
-            'Madera Community College': [36.9613, -120.0607], // Now listed as IN district
-            'Reedley College': [36.5991, -119.4504], // Part of State Center Community College District
+            // CA-22 colleges
+            'Taft College': [35.149517884255346, -119.4597667], // Manual override coordinates
+            'College of the Sequoias - Hanford Campus': [36.3274, -119.6459], // 925 13th Ave, Hanford, CA 93230
         };
 
         // State and city coordinates for fallbacks
@@ -861,21 +857,30 @@
 
             // PRIORITY #2: For CA-21 colleges with wrong addresses, use EXACT coordinates
             if (college.name.includes('Fresno City College')) {
-                college.lat = 36.7315;
-                college.lng = -119.7985;
+                college.lat = 36.76621911129075;
+                college.lng = -119.79727927331058;
                 college.geocodingSource = 'Manual fix for Fresno City College';
-                console.log('🔧 MANUAL FIX: Fresno City College → 36.7315, -119.7985');
+                console.log('🔧 MANUAL FIX: Fresno City College → 36.76621911129075, -119.79727927331058');
                 return college;
             }
 
             if (college.name.includes('College of the Sequoias')) {
                 if (college.address && college.address.includes('Tulare')) {
-                    college.lat = 36.2077;
-                    college.lng = -119.3473;
+                    college.lat = 36.19600741316634;
+                    college.lng = -119.28154532208914;
                     college.geocodingSource = 'Manual fix for College of the Sequoias - Tulare';
-                    console.log('🔧 MANUAL FIX: College of the Sequoias Tulare → 36.2077, -119.3473');
+                    console.log('🔧 MANUAL FIX: College of the Sequoias Tulare → 36.19600741316634, -119.28154532208914');
                     return college;
                 }
+            }
+
+            // PRIORITY #3: For CA-22 colleges with wrong addresses, use EXACT coordinates
+            if (college.name.includes('Taft College')) {
+                college.lat = 35.149517884255346;
+                college.lng = -119.4597667;
+                college.geocodingSource = 'Manual fix for Taft College';
+                console.log('🔧 MANUAL FIX: Taft College → 35.149517884255346, -119.4597667');
+                return college;
             }
 
             // PRIORITY #3: Only geocode if no manual coordinates exist

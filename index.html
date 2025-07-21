@@ -430,14 +430,131 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // Global variables
-        let collegeData = {};
-        let map;
-        let markers = [];
-        let loadedDistricts = new Set();
-        let geocodingQueue = [];
-        let geocodingInProgress = false;
-        let userLocationMarker = null;
+        // Congressional district data with representatives, parties, and Cook PVI
+        const districtData = {
+            'AK-AL': { rep: 'Mary Peltola', party: 'D', action: 'HOLD', pvi: 'R+8', center: [64.0685, -152.2782] },
+            'AZ-01': { rep: 'David Schweikert', party: 'R', action: 'FLIP', pvi: 'R+2', center: [33.6061, -111.8781] },
+            'AZ-02': { rep: 'Eli Crane', party: 'R', action: 'FLIP', pvi: 'R+7', center: [35.1983, -111.6513] },
+            'AZ-04': { rep: 'Greg Stanton', party: 'D', action: 'HOLD', pvi: 'D+2', center: [33.4152, -111.8315] },
+            'AZ-06': { rep: 'Juan Ciscomani', party: 'R', action: 'FLIP', pvi: 'R+1', center: [32.2319, -110.9501] },
+            'CA-09': { rep: 'Josh Harder', party: 'D', action: 'HOLD', pvi: 'D+5', center: [37.6391, -121.0018] },
+            'CA-13': { rep: 'John Duarte', party: 'R', action: 'FLIP', pvi: 'EVEN', center: [37.3022, -120.4832] },
+            'CA-21': { rep: 'Jim Costa', party: 'D', action: 'HOLD', pvi: 'D+5', center: [36.7315, -119.7985] },
+            'CA-22': { rep: 'David Valadao', party: 'R', action: 'FLIP', pvi: 'D+5', center: [35.3733, -119.0187] },
+            'CA-27': { rep: 'Mike Garcia', party: 'R', action: 'FLIP', pvi: 'D+4', center: [34.2411, -118.5289] },
+            'CA-41': { rep: 'Ken Calvert', party: 'R', action: 'FLIP', pvi: 'R+3', center: [33.9735, -117.3298] },
+            'CA-45': { rep: 'Michelle Steel', party: 'R', action: 'FLIP', pvi: 'D+2', center: [33.6405, -117.8443] },
+            'CA-47': { rep: 'Dave Min', party: 'D', action: 'HOLD', pvi: 'D+3', center: [33.7838, -118.1141] },
+            'CA-49': { rep: 'Mike Levin', party: 'D', action: 'HOLD', pvi: 'D+3', center: [33.1281, -117.3078] },
+            'CO-03': { rep: 'Lauren Boebert', party: 'R', action: 'FLIP', pvi: 'R+7', center: [39.5501, -107.7996] },
+            'CO-08': { rep: 'Yadira Caraveo', party: 'D', action: 'HOLD', pvi: 'D+1', center: [39.8561, -104.6737] },
+            'CT-05': { rep: 'Jahana Hayes', party: 'D', action: 'HOLD', pvi: 'D+1', center: [41.5834, -73.0877] },
+            'FL-23': { rep: 'Jared Moskowitz', party: 'D', action: 'HOLD', pvi: 'D+6', center: [26.1224, -80.1373] },
+            'FL-25': { rep: 'Mario Díaz-Balart', party: 'R', action: 'FLIP', pvi: 'R+2', center: [25.6761, -80.3200] },
+            'NV-01': { rep: 'Dina Titus', party: 'D', action: 'HOLD', pvi: 'D+9', center: [36.1699, -115.1398] },
+            'NV-03': { rep: 'Susie Lee', party: 'D', action: 'HOLD', pvi: 'D+1', center: [36.0395, -115.1656] },
+            'NV-04': { rep: 'Steven Horsford', party: 'D', action: 'HOLD', pvi: 'D+3', center: [36.2277, -115.2640] }
+        };
+
+        function findClosestDistricts() {
+            const btn = document.getElementById('findClosestBtn');
+            
+            if (!navigator.geolocation) {
+                alert('Geolocation is not supported by your browser');
+                return;
+            }
+
+            // Show loading state
+            btn.innerHTML = '🔍 Finding closest districts...';
+            btn.disabled = true;
+            
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    const userLat = position.coords.latitude;
+                    const userLng = position.coords.longitude;
+                    
+                    console.log('🗺️ User location:', userLat, userLng);
+                    
+                    // Calculate distances to all swing districts
+                    const distances = [];
+                    
+                    for (const [district, data] of Object.entries(districtData)) {
+                        const distance = calculateDistance(userLat, userLng, data.center[0], data.center[1]);
+                        distances.push({
+                            district: district,
+                            distance: distance,
+                            ...data
+                        });
+                    }
+                    
+                    // Sort by distance and take top 8
+                    distances.sort((a, b) => a.distance - b.distance);
+                    const closest8 = distances.slice(0, 8);
+                    
+                    displayClosestDistricts(closest8);
+                    
+                    // Reset button
+                    btn.innerHTML = '📍 What swing districts are closest to me?';
+                    btn.disabled = false;
+                },
+                function(error) {
+                    console.log('❌ Geolocation error:', error.message);
+                    alert('Unable to get your location. Please enable location access.');
+                    
+                    // Reset button
+                    btn.innerHTML = '📍 What swing districts are closest to me?';
+                    btn.disabled = false;
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 300000
+                }
+            );
+        }
+
+        function calculateDistance(lat1, lng1, lat2, lng2) {
+            const R = 3959; // Earth's radius in miles
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLng/2) * Math.sin(dLng/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        function displayClosestDistricts(districts) {
+            const container = document.getElementById('closestDistricts');
+            
+            let html = '<div class="closest-districts-list">';
+            html += '<h3>🎯 Your 8 Closest Swing Districts</h3>';
+            
+            districts.forEach((district, index) => {
+                html += '<div class="district-item">';
+                html += '<div class="district-info">';
+                html += '<div class="district-name">' + district.district + '</div>';
+                html += '<div class="rep-info">';
+                html += '<span class="rep-name">' + district.rep + '</span>';
+                html += '<span class="party-label party-' + district.party.toLowerCase() + '">' + district.party + '</span>';
+                html += '<span class="action-label action-' + district.action.toLowerCase() + '">' + district.action + '</span>';
+                html += '<span class="pvi-score">' + district.pvi + '</span>';
+                html += '</div>';
+                html += '</div>';
+                html += '<div class="distance-info">' + Math.round(district.distance) + ' miles</div>';
+                html += '</div>';
+            });
+            
+            html += '</div>';
+            
+            container.innerHTML = html;
+            container.style.display = 'block';
+            
+            // Smooth scroll to results
+            setTimeout(() => {
+                container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 100);
+        }
 
         // District mappings
         const districtMappings = {

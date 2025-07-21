@@ -364,6 +364,25 @@
             color: #666;
             margin-top: 5px;
         }
+
+        .cities-info {
+            margin-top: 10px;
+            padding: 8px 12px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: #555;
+        }
+
+        .cities-label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 3px;
+        }
+
+        .cities-list {
+            line-height: 1.3;
+        }
     </style>
 </head>
 <body>
@@ -438,31 +457,192 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // Congressional district data with representatives, parties, and Cook PVI
+        // Congressional district data with representatives, parties, Cook PVI, and biggest cities
         const districtData = {
-            'AK-AL': { rep: 'Mary Peltola', party: 'D', action: 'HOLD', pvi: 'R+8', center: [64.0685, -152.2782] },
-            'AZ-01': { rep: 'David Schweikert', party: 'R', action: 'FLIP', pvi: 'R+2', center: [33.6061, -111.8781] },
-            'AZ-02': { rep: 'Eli Crane', party: 'R', action: 'FLIP', pvi: 'R+7', center: [35.1983, -111.6513] },
-            'AZ-04': { rep: 'Greg Stanton', party: 'D', action: 'HOLD', pvi: 'D+2', center: [33.4152, -111.8315] },
-            'AZ-06': { rep: 'Juan Ciscomani', party: 'R', action: 'FLIP', pvi: 'R+1', center: [32.2319, -110.9501] },
-            'CA-09': { rep: 'Josh Harder', party: 'D', action: 'HOLD', pvi: 'D+5', center: [37.6391, -121.0018] },
-            'CA-13': { rep: 'John Duarte', party: 'R', action: 'FLIP', pvi: 'EVEN', center: [37.3022, -120.4832] },
-            'CA-21': { rep: 'Jim Costa', party: 'D', action: 'HOLD', pvi: 'D+5', center: [36.7315, -119.7985] },
-            'CA-22': { rep: 'David Valadao', party: 'R', action: 'FLIP', pvi: 'D+5', center: [35.3733, -119.0187] },
-            'CA-27': { rep: 'Mike Garcia', party: 'R', action: 'FLIP', pvi: 'D+4', center: [34.2411, -118.5289] },
-            'CA-41': { rep: 'Ken Calvert', party: 'R', action: 'FLIP', pvi: 'R+3', center: [33.9735, -117.3298] },
-            'CA-45': { rep: 'Michelle Steel', party: 'R', action: 'FLIP', pvi: 'D+2', center: [33.6405, -117.8443] },
-            'CA-47': { rep: 'Dave Min', party: 'D', action: 'HOLD', pvi: 'D+3', center: [33.7838, -118.1141] },
-            'CA-49': { rep: 'Mike Levin', party: 'D', action: 'HOLD', pvi: 'D+3', center: [33.1281, -117.3078] },
-            'CO-03': { rep: 'Lauren Boebert', party: 'R', action: 'FLIP', pvi: 'R+7', center: [39.5501, -107.7996] },
-            'CO-08': { rep: 'Yadira Caraveo', party: 'D', action: 'HOLD', pvi: 'D+1', center: [39.8561, -104.6737] },
-            'CT-05': { rep: 'Jahana Hayes', party: 'D', action: 'HOLD', pvi: 'D+1', center: [41.5834, -73.0877] },
-            'FL-23': { rep: 'Jared Moskowitz', party: 'D', action: 'HOLD', pvi: 'D+6', center: [26.1224, -80.1373] },
-            'FL-25': { rep: 'Mario Díaz-Balart', party: 'R', action: 'FLIP', pvi: 'R+2', center: [25.6761, -80.3200] },
-            'NV-01': { rep: 'Dina Titus', party: 'D', action: 'HOLD', pvi: 'D+9', center: [36.1699, -115.1398] },
-            'NV-03': { rep: 'Susie Lee', party: 'D', action: 'HOLD', pvi: 'D+1', center: [36.0395, -115.1656] },
-            'NV-04': { rep: 'Steven Horsford', party: 'D', action: 'HOLD', pvi: 'D+3', center: [36.2277, -115.2640] }
+            'AK-AL': { 
+                rep: 'Mary Peltola', 
+                party: 'D', 
+                action: 'HOLD', 
+                pvi: 'R+8', 
+                center: [64.0685, -152.2782],
+                cities: ['Anchorage', 'Fairbanks', 'Juneau', 'Wasilla', 'Sitka']
+            },
+            'AZ-01': { 
+                rep: 'David Schweikert', 
+                party: 'R', 
+                action: 'FLIP', 
+                pvi: 'R+2', 
+                center: [33.6061, -111.8781],
+                cities: ['Scottsdale', 'Tempe', 'Mesa', 'Fountain Hills', 'Paradise Valley']
+            },
+            'AZ-02': { 
+                rep: 'Eli Crane', 
+                party: 'R', 
+                action: 'FLIP', 
+                pvi: 'R+7', 
+                center: [35.1983, -111.6513],
+                cities: ['Flagstaff', 'Prescott', 'Sedona', 'Cottonwood', 'Show Low']
+            },
+            'AZ-04': { 
+                rep: 'Greg Stanton', 
+                party: 'D', 
+                action: 'HOLD', 
+                pvi: 'D+2', 
+                center: [33.4152, -111.8315],
+                cities: ['Phoenix', 'Chandler', 'Ahwatukee', 'South Mountain', 'Laveen']
+            },
+            'AZ-06': { 
+                rep: 'Juan Ciscomani', 
+                party: 'R', 
+                action: 'FLIP', 
+                pvi: 'R+1', 
+                center: [32.2319, -110.9501],
+                cities: ['Tucson', 'Sierra Vista', 'Oro Valley', 'Marana', 'Sahuarita']
+            },
+            'CA-09': { 
+                rep: 'Josh Harder', 
+                party: 'D', 
+                action: 'HOLD', 
+                pvi: 'D+5', 
+                center: [37.6391, -121.0018],
+                cities: ['Stockton', 'Lodi', 'Tracy', 'Manteca', 'Mountain House']
+            },
+            'CA-13': { 
+                rep: 'John Duarte', 
+                party: 'R', 
+                action: 'FLIP', 
+                pvi: 'EVEN', 
+                center: [37.3022, -120.4832],
+                cities: ['Modesto', 'Turlock', 'Merced', 'Los Banos', 'Ceres']
+            },
+            'CA-21': { 
+                rep: 'Jim Costa', 
+                party: 'D', 
+                action: 'HOLD', 
+                pvi: 'D+5', 
+                center: [36.7315, -119.7985],
+                cities: ['Fresno', 'Hanford', 'Tulare', 'Visalia', 'Dinuba']
+            },
+            'CA-22': { 
+                rep: 'David Valadao', 
+                party: 'R', 
+                action: 'FLIP', 
+                pvi: 'D+5', 
+                center: [35.3733, -119.0187],
+                cities: ['Bakersfield', 'Delano', 'Wasco', 'Shafter', 'Taft']
+            },
+            'CA-27': { 
+                rep: 'Mike Garcia', 
+                party: 'R', 
+                action: 'FLIP', 
+                pvi: 'D+4', 
+                center: [34.2411, -118.5289],
+                cities: ['Santa Clarita', 'Palmdale', 'Lancaster', 'Simi Valley', 'Moorpark']
+            },
+            'CA-41': { 
+                rep: 'Ken Calvert', 
+                party: 'R', 
+                action: 'FLIP', 
+                pvi: 'R+3', 
+                center: [33.9735, -117.3298],
+                cities: ['Riverside', 'Corona', 'Murrieta', 'Temecula', 'Norco']
+            },
+            'CA-45': { 
+                rep: 'Michelle Steel', 
+                party: 'R', 
+                action: 'FLIP', 
+                pvi: 'D+2', 
+                center: [33.6405, -117.8443],
+                cities: ['Irvine', 'Tustin', 'Lake Forest', 'Mission Viejo', 'Laguna Hills']
+            },
+            'CA-47': { 
+                rep: 'Dave Min', 
+                party: 'D', 
+                action: 'HOLD', 
+                pvi: 'D+3', 
+                center: [33.7838, -118.1141],
+                cities: ['Huntington Beach', 'Garden Grove', 'Westminster', 'Fountain Valley', 'Seal Beach']
+            },
+            'CA-49': { 
+                rep: 'Mike Levin', 
+                party: 'D', 
+                action: 'HOLD', 
+                pvi: 'D+3', 
+                center: [33.1281, -117.3078],
+                cities: ['Oceanside', 'Vista', 'Carlsbad', 'Encinitas', 'San Marcos']
+            },
+            'CO-03': { 
+                rep: 'Lauren Boebert', 
+                party: 'R', 
+                action: 'FLIP', 
+                pvi: 'R+7', 
+                center: [39.5501, -107.7996],
+                cities: ['Grand Junction', 'Pueblo', 'Montrose', 'Durango', 'Glenwood Springs']
+            },
+            'CO-08': { 
+                rep: 'Yadira Caraveo', 
+                party: 'D', 
+                action: 'HOLD', 
+                pvi: 'D+1', 
+                center: [39.8561, -104.6737],
+                cities: ['Thornton', 'Westminster', 'Northglenn', 'Commerce City', 'Brighton']
+            },
+            'CT-05': { 
+                rep: 'Jahana Hayes', 
+                party: 'D', 
+                action: 'HOLD', 
+                pvi: 'D+1', 
+                center: [41.5834, -73.0877],
+                cities: ['Waterbury', 'Danbury', 'New Britain', 'Meriden', 'Torrington']
+            },
+            'FL-23': { 
+                rep: 'Jared Moskowitz', 
+                party: 'D', 
+                action: 'HOLD', 
+                pvi: 'D+6', 
+                center: [26.1224, -80.1373],
+                cities: ['Boca Raton', 'Delray Beach', 'Boynton Beach', 'Coral Springs', 'Coconut Creek']
+            },
+            'FL-25': { 
+                rep: 'Mario Díaz-Balart', 
+                party: 'R', 
+                action: 'FLIP', 
+                pvi: 'R+2', 
+                center: [25.6761, -80.3200],
+                cities: ['Hialeah', 'Homestead', 'Florida City', 'Doral', 'Sweetwater']
+            },
+            'NV-01': { 
+                rep: 'Dina Titus', 
+                party: 'D', 
+                action: 'HOLD', 
+                pvi: 'D+9', 
+                center: [36.1699, -115.1398],
+                cities: ['Las Vegas', 'Paradise', 'Winchester', 'Enterprise', 'Spring Valley']
+            },
+            'NV-03': { 
+                rep: 'Susie Lee', 
+                party: 'D', 
+                action: 'HOLD', 
+                pvi: 'D+1', 
+                center: [36.0395, -115.1656],
+                cities: ['Henderson', 'Boulder City', 'Summerlin', 'Green Valley', 'Seven Hills']
+            },
+            'NV-04': { 
+                rep: 'Steven Horsford', 
+                party: 'D', 
+                action: 'HOLD', 
+                pvi: 'D+3', 
+                center: [36.2277, -115.2640],
+                cities: ['North Las Vegas', 'Sunrise Manor', 'Nellis AFB', 'Laughlin', 'Mesquite']
+            }
         };
+
+        // Global variables for app state
+        let map;
+        let markers = [];
+        let userLocationMarker;
+        let collegeData = {};
+        let loadedDistricts = new Set();
 
         function findClosestDistricts() {
             const btn = document.getElementById('findClosestBtn');
@@ -539,10 +719,10 @@
             html += '<h3 style="color: #333; margin-bottom: 20px; font-size: 1.5rem;">🎯 Your 8 Closest Swing Districts</h3>';
             
             districts.forEach((district, index) => {
-                html += '<div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; margin: 10px 0; background: white; border-radius: 10px; border-left: 5px solid #667eea; box-shadow: 0 2px 10px rgba(0,0,0,0.05); transition: all 0.3s ease;">';
+                html += '<div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 15px; margin: 10px 0; background: white; border-radius: 10px; border-left: 5px solid #667eea; box-shadow: 0 2px 10px rgba(0,0,0,0.05); transition: all 0.3s ease;">';
                 html += '<div style="flex: 1;">';
                 html += '<div style="font-weight: bold; font-size: 1.1rem; color: #333; margin-bottom: 5px;">' + district.district + '</div>';
-                html += '<div style="display: flex; align-items: center; gap: 10px;">';
+                html += '<div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">';
                 html += '<span style="color: #666;">' + district.rep + '</span>';
                 
                 // Party label with proper colors
@@ -556,6 +736,15 @@
                 // PVI score
                 html += '<span style="background: #f0f0f0; color: #666; padding: 4px 8px; border-radius: 10px; font-size: 0.9rem;">' + district.pvi + '</span>';
                 html += '</div>';
+                
+                // Add cities information
+                if (district.cities && district.cities.length > 0) {
+                    html += '<div class="cities-info">';
+                    html += '<div class="cities-label">Biggest 5 Cities:</div>';
+                    html += '<div class="cities-list">' + district.cities.join(', ') + '</div>';
+                    html += '</div>';
+                }
+                
                 html += '</div>';
                 html += '<div style="text-align: right; color: #667eea; font-weight: bold; font-size: 1.1rem;">' + Math.round(district.distance) + ' miles</div>';
                 html += '</div>';

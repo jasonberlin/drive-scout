@@ -487,7 +487,7 @@
 
             // CA-22 colleges
             'Taft College': [35.149517884255346, -119.4597667], // Manual override coordinates
-            'College of the Sequoias - Hanford Campus': [36.3274, -119.6459], // 925 13th Ave, Hanford, CA 93230
+            'College of the Sequoias - Hanford Campus': [36.33348317655784, -119.68999451405378], // Manual override: 925 13th Ave, Hanford, CA 93230
         };
 
         // State and city coordinates for fallbacks
@@ -880,6 +880,14 @@
                 college.lng = -119.4597667;
                 college.geocodingSource = 'Manual fix for Taft College';
                 console.log('🔧 MANUAL FIX: Taft College → 35.149517884255346, -119.4597667');
+                return college;
+            }
+
+            if (college.name.includes('College of the Sequoias') && college.name.includes('Hanford')) {
+                college.lat = 36.33348317655784;
+                college.lng = -119.68999451405378;
+                college.geocodingSource = 'Manual fix for College of the Sequoias - Hanford Campus';
+                console.log('🔧 MANUAL FIX: College of the Sequoias Hanford → 36.33348317655784, -119.68999451405378');
                 return college;
             }
 

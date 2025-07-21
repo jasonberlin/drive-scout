@@ -376,14 +376,9 @@
             </div>
             <p>Find the best college campuses for voter registration drives in swing congressional districts</p>
             
-            <!-- SIMPLE TEST - This should definitely appear -->
-            <div style="background: yellow; padding: 20px; margin: 20px 0; text-align: center; border: 5px solid red; font-size: 24px; color: black;">
-                🚨 HELLO! CAN YOU SEE THIS YELLOW BOX? 🚨
-            </div>
-            
-            <!-- CLOSEST DISTRICTS BUTTON - Right next to the yellow box -->
-            <div style="background: white; padding: 20px; margin: 20px 0; text-align: center; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-                <button id="findClosestBtn" onclick="findClosestDistricts()" style="background: #667eea; color: white; padding: 15px 30px; border: none; border-radius: 10px; font-size: 18px; cursor: pointer; font-weight: bold;">
+            <!-- CLOSEST DISTRICTS FEATURE -->
+            <div style="background: rgba(255,255,255,0.95); padding: 25px; margin: 30px 0; text-align: center; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.1); backdrop-filter: blur(10px);">
+                <button id="findClosestBtn" onclick="findClosestDistricts()" style="background: #667eea; color: white; padding: 15px 30px; border: none; border-radius: 10px; font-size: 1.1rem; cursor: pointer; font-weight: bold; transition: all 0.3s ease;">
                     📍 What swing districts are closest to me?
                 </button>
                 <div id="closestDistricts" style="display: none; margin-top: 20px;"></div>
@@ -540,21 +535,29 @@
         function displayClosestDistricts(districts) {
             const container = document.getElementById('closestDistricts');
             
-            let html = '<div class="closest-districts-list">';
-            html += '<h3>🎯 Your 8 Closest Swing Districts</h3>';
+            let html = '<div class="closest-districts-list" style="background: rgba(255,255,255,0.95); border-radius: 15px; padding: 25px; margin-top: 20px; box-shadow: 0 8px 32px rgba(0,0,0,0.1);">';
+            html += '<h3 style="color: #333; margin-bottom: 20px; font-size: 1.5rem;">🎯 Your 8 Closest Swing Districts</h3>';
             
             districts.forEach((district, index) => {
-                html += '<div class="district-item">';
-                html += '<div class="district-info">';
-                html += '<div class="district-name">' + district.district + '</div>';
-                html += '<div class="rep-info">';
-                html += '<span class="rep-name">' + district.rep + '</span>';
-                html += '<span class="party-label party-' + district.party.toLowerCase() + '">' + district.party + '</span>';
-                html += '<span class="action-label action-' + district.action.toLowerCase() + '">' + district.action + '</span>';
-                html += '<span class="pvi-score">' + district.pvi + '</span>';
+                html += '<div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; margin: 10px 0; background: white; border-radius: 10px; border-left: 5px solid #667eea; box-shadow: 0 2px 10px rgba(0,0,0,0.05); transition: all 0.3s ease;">';
+                html += '<div style="flex: 1;">';
+                html += '<div style="font-weight: bold; font-size: 1.1rem; color: #333; margin-bottom: 5px;">' + district.district + '</div>';
+                html += '<div style="display: flex; align-items: center; gap: 10px;">';
+                html += '<span style="color: #666;">' + district.rep + '</span>';
+                
+                // Party label with proper colors
+                const partyColor = district.party === 'D' ? '#4169E1' : '#DC143C';
+                html += '<span style="background: ' + partyColor + '; color: white; padding: 3px 8px; border-radius: 15px; font-size: 0.8rem; font-weight: bold;">' + district.party + '</span>';
+                
+                // Action label with proper colors
+                const actionColor = district.action === 'FLIP' ? '#FF6B35' : '#4CAF50';
+                html += '<span style="background: ' + actionColor + '; color: white; padding: 4px 10px; border-radius: 15px; font-size: 0.9rem; font-weight: bold;">' + district.action + '</span>';
+                
+                // PVI score
+                html += '<span style="background: #f0f0f0; color: #666; padding: 4px 8px; border-radius: 10px; font-size: 0.9rem;">' + district.pvi + '</span>';
                 html += '</div>';
                 html += '</div>';
-                html += '<div class="distance-info">' + Math.round(district.distance) + ' miles</div>';
+                html += '<div style="text-align: right; color: #667eea; font-weight: bold; font-size: 1.1rem;">' + Math.round(district.distance) + ' miles</div>';
                 html += '</div>';
             });
             

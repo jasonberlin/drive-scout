@@ -380,6 +380,14 @@
             <div style="background: yellow; padding: 20px; margin: 20px 0; text-align: center; border: 5px solid red; font-size: 24px; color: black;">
                 🚨 HELLO! CAN YOU SEE THIS YELLOW BOX? 🚨
             </div>
+            
+            <!-- CLOSEST DISTRICTS BUTTON - Right next to the yellow box -->
+            <div style="background: white; padding: 20px; margin: 20px 0; text-align: center; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                <button id="findClosestBtn" onclick="findClosestDistricts()" style="background: #667eea; color: white; padding: 15px 30px; border: none; border-radius: 10px; font-size: 18px; cursor: pointer; font-weight: bold;">
+                    📍 What swing districts are closest to me?
+                </button>
+                <div id="closestDistricts" style="display: none; margin-top: 20px;"></div>
+            </div>
         </div>
 
         <div class="controls">

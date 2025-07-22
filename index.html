@@ -692,6 +692,7 @@
             btn.innerHTML = '🔍 Finding closest districts...';
             btn.disabled = true;
             
+            // Check if geolocation is available
             if (!navigator.geolocation) {
                 alert('Geolocation is not supported by your browser');
                 btn.innerHTML = '📍 What swing districts are closest to me?';
@@ -699,80 +700,189 @@
                 return;
             }
 
-            console.log('🗺️ Starting geolocation request...');
+            console.log('🗺️ Geolocation available, checking permissions...');
             
-            // Call geolocation immediately without delay for iPhone compatibility
-            navigator.geolocation.getCurrentPosition(
-                function(position) {
-                    console.log('✅ Location success!');
-                    const userLat = position.coords.latitude;
-                    const userLng = position.coords.longitude;
+            // Try to check permissions first (if supported)
+            if (navigator.permissions) {
+                navigator.permissions.query({name: 'geolocation'}).then(function(result) {
+                    console.log('🔐 Permission state:', result.state);
                     
-                    console.log('🗺️ User location:', userLat, userLng);
-                    
-                    // Calculate distances to all swing districts
-                    const distances = [];
-                    
-                    for (const [district, data] of Object.entries(districtData)) {
-                        const distance = calculateDistance(userLat, userLng, data.center[0], data.center[1]);
-                        distances.push({
-                            district: district,
-                            distance: distance,
-                            ...data
-                        });
+                    if (result.state === 'granted') {
+                        console.log('✅ Permission already granted');
+                        getCurrentLocationWithTimeout();
+                    } else if (result.state === 'prompt') {
+                        console.log('❓ Permission will prompt');
+                        getCurrentLocationWithTimeout();
+                    } else {
+                        console.log('❌ Permission denied');
+                        offerZipCodeFallback('Location permission was previously denied.');
                     }
-                    
-                    // Sort by distance and take top 8
-                    distances.sort((a, b) => a.distance - b.distance);
-                    const closest8 = distances.slice(0, 8);
-                    
-                    displayClosestDistricts(closest8);
-                    
-                    // Reset button
-                    btn.innerHTML = '📍 What swing districts are closest to me?';
-                    btn.disabled = false;
-                },
-                function(error) {
-                    console.log('❌ Geolocation error:', error.message);
-                    console.log('❌ Error code:', error.code);
-                    console.log('❌ Error details:', error);
-                    
-                    let errorMessage = '';
-                    let debugInfo = '';
-                    
-                    switch(error.code) {
-                        case 1: // PERMISSION_DENIED
-                            errorMessage = 'Location access was denied.';
-                            debugInfo = ' On iPhone Safari, you should see a popup asking "Allow [website] to access your location?" - please tap "Allow". If no popup appeared, try refreshing the page and tapping the button again.';
-                            break;
-                        case 2: // POSITION_UNAVAILABLE
-                            errorMessage = 'Your location is currently unavailable.';
-                            debugInfo = ' Please make sure Location Services is enabled in iPhone Settings > Privacy & Security > Location Services.';
-                            break;
-                        case 3: // TIMEOUT
-                            errorMessage = 'Location request timed out.';
-                            debugInfo = ' Please check your internet connection and try again.';
-                            break;
-                        default:
-                            errorMessage = 'Unable to get your location.';
-                            debugInfo = ' Error code: ' + error.code;
+                }).catch(function(error) {
+                    console.log('⚠️ Permissions API not supported, trying direct geolocation');
+                    getCurrentLocationWithTimeout();
+                });
+            } else {
+                console.log('⚠️ Permissions API not available, trying direct geolocation');
+                getCurrentLocationWithTimeout();
+            }
+            
+            function getCurrentLocationWithTimeout() {
+                console.log('📍 Requesting current position...');
+                
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        console.log('✅ Location success!');
+                        const userLat = position.coords.latitude;
+                        const userLng = position.coords.longitude;
+                        
+                        console.log('🗺️ User location:', userLat, userLng);
+                        
+                        // Calculate distances to all swing districts
+                        const distances = [];
+                        
+                        for (const [district, data] of Object.entries(districtData)) {
+                            const distance = calculateDistance(userLat, userLng, data.center[0], data.center[1]);
+                            distances.push({
+                                district: district,
+                                distance: distance,
+                                ...data
+                            });
+                        }
+                        
+                        // Sort by distance and take top 8
+                        distances.sort((a, b) => a.distance - b.distance);
+                        const closest8 = distances.slice(0, 8);
+                        
+                        displayClosestDistricts(closest8);
+                        
+                        // Reset button
+                        btn.innerHTML = '📍 What swing districts are closest to me?';
+                        btn.disabled = false;
+                    },
+                    function(error) {
+                        console.log('❌ Geolocation error:', error.message);
+                        console.log('❌ Error code:', error.code);
+                        console.log('❌ Full error object:', error);
+                        
+                        let errorMessage = '';
+                        
+                        switch(error.code) {
+                            case 1: // PERMISSION_DENIED
+                                errorMessage = 'Location access was denied. This might be because:\n• You tapped "Don\'t Allow" on a previous visit\n• Safari settings are blocking location access\n• The site permissions need to be reset';
+                                break;
+                            case 2: // POSITION_UNAVAILABLE
+                                errorMessage = 'Your location is currently unavailable. Please check that Location Services is enabled in your iPhone settings.';
+                                break;
+                            case 3: // TIMEOUT
+                                errorMessage = 'Location request timed out. Please check your internet connection.';
+                                break;
+                            default:
+                                errorMessage = 'Unable to get your location (Error code: ' + error.code + ')';
+                        }
+                        
+                        offerZipCodeFallback(errorMessage);
+                    },
+                    {
+                        enableHighAccuracy: false,
+                        timeout: 15000,
+                        maximumAge: 30000
                     }
-                    
-                    alert(errorMessage + debugInfo);
-                    
-                    // Reset button
-                    btn.innerHTML = '📍 What swing districts are closest to me?';
-                    btn.disabled = false;
-                },
-                {
-                    enableHighAccuracy: false, // Better for mobile/battery
-                    timeout: 20000, // 20 seconds - longer for mobile
-                    maximumAge: 60000 // 1 minute cache
+                );
+            }
+            
+            function offerZipCodeFallback(errorMessage) {
+                // Reset button first
+                btn.innerHTML = '📍 What swing districts are closest to me?';
+                btn.disabled = false;
+                
+                // Offer manual input as fallback
+                const useManualInput = confirm(errorMessage + '\n\nWould you like to enter your ZIP code instead to find nearby districts?');
+                
+                if (useManualInput) {
+                    const zipCode = prompt('Please enter your ZIP code:');
+                    if (zipCode && zipCode.length === 5 && /^\d+$/.test(zipCode)) {
+                        handleZipCodeLookup(zipCode);
+                    } else if (zipCode) {
+                        alert('Please enter a valid 5-digit ZIP code.');
+                    }
                 }
-            );
+            }
         }
 
-        function calculateDistance(lat1, lng1, lat2, lng2) {
+        function handleZipCodeLookup(zipCode) {
+            console.log('🔍 Looking up ZIP code:', zipCode);
+            
+            // Simple ZIP code to approximate coordinates lookup
+            // This is a basic fallback - you could integrate with a proper ZIP code API
+            const zipCoordinates = {
+                // Major cities for testing
+                '10001': [40.7505, -73.9934], // NYC
+                '90210': [34.0901, -118.4065], // Beverly Hills
+                '60601': [41.8825, -87.6441], // Chicago
+                '75201': [32.7767, -96.7970], // Dallas
+                '33101': [25.7617, -80.1918], // Miami
+                '94102': [37.7749, -122.4194], // San Francisco
+                '98101': [47.6062, -122.3321], // Seattle
+                '85001': [33.4484, -112.0740], // Phoenix
+                '80201': [39.7392, -104.9903], // Denver
+                '06510': [41.3083, -72.9279], // New Haven, CT
+                '06410': [41.4993, -72.8903], // Cheshire, CT
+                '93721': [36.7378, -119.7871], // Fresno, CA
+                '89101': [36.1699, -115.1398], // Las Vegas, NV
+            };
+            
+            let userLat, userLng;
+            
+            if (zipCoordinates[zipCode]) {
+                userLat = zipCoordinates[zipCode][0];
+                userLng = zipCoordinates[zipCode][1];
+                console.log('✅ Found coordinates for ZIP:', zipCode, '->', userLat, userLng);
+            } else {
+                // Approximate coordinates for unknown ZIP codes based on first digit
+                const stateApproximations = {
+                    '0': [41.5834, -72.7622], // Connecticut area
+                    '1': [42.3601, -71.0589], // Massachusetts area  
+                    '2': [40.7589, -73.9851], // New York area
+                    '3': [39.7391, -75.5502], // Pennsylvania area
+                    '4': [33.7490, -84.3880], // Georgia area
+                    '5': [32.3617, -86.2792], // Alabama area
+                    '6': [39.7817, -89.6501], // Illinois area
+                    '7': [31.5804, -96.6989], // Texas area
+                    '8': [39.7392, -104.9903], // Colorado area
+                    '9': [36.1716, -115.1391], // Nevada area
+                };
+                
+                const firstDigit = zipCode.charAt(0);
+                if (stateApproximations[firstDigit]) {
+                    userLat = stateApproximations[firstDigit][0];
+                    userLng = stateApproximations[firstDigit][1];
+                    console.log('📍 Using regional approximation for ZIP:', zipCode);
+                } else {
+                    // Default to center of US
+                    userLat = 39.8283;
+                    userLng = -98.5795;
+                    console.log('🗺️ Using US center as fallback');
+                }
+            }
+            
+            // Calculate distances to all swing districts
+            const distances = [];
+            
+            for (const [district, data] of Object.entries(districtData)) {
+                const distance = calculateDistance(userLat, userLng, data.center[0], data.center[1]);
+                distances.push({
+                    district: district,
+                    distance: distance,
+                    ...data
+                });
+            }
+            
+            // Sort by distance and take top 8
+            distances.sort((a, b) => a.distance - b.distance);
+            const closest8 = distances.slice(0, 8);
+            
+            displayClosestDistricts(closest8);
+        }
             const R = 3959; // Earth's radius in miles
             const dLat = (lat2 - lat1) * Math.PI / 180;
             const dLng = (lng2 - lng1) * Math.PI / 180;

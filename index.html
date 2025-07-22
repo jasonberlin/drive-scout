@@ -1167,6 +1167,104 @@
             return isReligious || isServicesCenter;
         }
 
+        function calculateVoterDriveSuitability(college) {
+            let score = 0;
+            let details = [];
+            
+            // ENROLLMENT SCORING (0-50 points)
+            const enrollment = college.enrollment || 0;
+            if (enrollment >= 15000) {
+                score += 50;
+                details.push(`Large enrollment (${enrollment.toLocaleString()})`);
+            } else if (enrollment >= 8000) {
+                score += 40;
+                details.push(`Good enrollment (${enrollment.toLocaleString()})`);
+            } else if (enrollment >= 3000) {
+                score += 30;
+                details.push(`Medium enrollment (${enrollment.toLocaleString()})`);
+            } else if (enrollment >= 1000) {
+                score += 20;
+                details.push(`Small enrollment (${enrollment.toLocaleString()})`);
+            } else {
+                score += 10;
+                details.push(`Very small enrollment (${enrollment.toLocaleString()})`);
+            }
+            
+            // CAMPUS TYPE SCORING (0-30 points)
+            const collegeName = (college.name || '').toLowerCase();
+            const collegeType = (college.type || '').toLowerCase();
+            
+            // Community colleges often have the best results for voter drives
+            if (collegeName.includes('community') || collegeType.includes('community')) {
+                score += 30;
+                details.push('Community college (excellent for voter drives)');
+            }
+            // Major universities typically have large quads and gathering spaces
+            else if (collegeName.includes('university') || collegeName.includes('state')) {
+                score += 30;
+                details.push('University campus (likely large quad areas)');
+            }
+            // Art, technical, or specialized schools may have limited outdoor gathering areas
+            else if (collegeName.includes('art') || collegeName.includes('technical') || 
+                     collegeName.includes('institute') || collegeType.includes('technical')) {
+                score += 10;
+                details.push('Specialized school (limited outdoor spaces)');
+            }
+            // Default for other colleges
+            else {
+                score += 15;
+                details.push('Standard college campus');
+            }
+            
+            // CAMPUS FEATURES SCORING (0-20 points)
+            // Look for indicators of good outdoor gathering spaces
+            if (collegeName.includes('quad') || collegeName.includes('plaza') || 
+                collegeName.includes('commons') || collegeName.includes('green')) {
+                score += 20;
+                details.push('Campus has named quad/gathering areas');
+            }
+            // Downtown or urban campuses might have limited outdoor space
+            else if (collegeName.includes('downtown') || collegeName.includes('urban') ||
+                     collegeName.includes('city center')) {
+                score += 5;
+                details.push('Urban campus (limited outdoor space)');
+            }
+            // Main campuses typically have better outdoor facilities than satellite locations
+            else if (collegeName.includes('main') || collegeName.includes('campus')) {
+                score += 15;
+                details.push('Main campus (good outdoor facilities)');
+            }
+            // Satellite campuses, centers, or extensions often have limited space
+            else if (collegeName.includes('center') || collegeName.includes('extension') ||
+                     collegeName.includes('satellite') || collegeName.includes('branch')) {
+                score += 5;
+                details.push('Satellite location (limited outdoor space)');
+            }
+            else {
+                score += 10;
+                details.push('Standard campus facilities');
+            }
+            
+            // DETERMINE FINAL SUITABILITY
+            let suitability;
+            if (score >= 80) {
+                suitability = 'High';
+            } else if (score >= 50) {
+                suitability = 'Medium';
+            } else {
+                suitability = 'Low';
+            }
+            
+            console.log(`📊 Suitability calculated for ${college.name}: ${suitability} (${score}/100)`);
+            console.log(`📝 Factors: ${details.join(', ')}`);
+            
+            return {
+                suitability: suitability,
+                score: score,
+                details: details
+            };
+        }
+
         async function parseCollegeData(values, headers, district, section) {
             const college = {
                 name: values[0].trim() || '',
@@ -1257,6 +1355,13 @@
                 college.lng = knownCoords[1];
                 college.geocodingSource = 'Manual override database';
                 console.log('⚡ MANUAL OVERRIDE: ' + college.name + ' → ' + college.lat + ', ' + college.lng);
+                
+                // CALCULATE VOTER DRIVE SUITABILITY AUTOMATICALLY
+                const suitabilityResult = calculateVoterDriveSuitability(college);
+                college.suitability = suitabilityResult.suitability;
+                college.suitabilityScore = suitabilityResult.score;
+                college.suitabilityDetails = suitabilityResult.details;
+                
                 return college;
             }
 
@@ -1266,6 +1371,13 @@
                 college.lng = -119.79727927331058;
                 college.geocodingSource = 'Manual fix for Fresno City College';
                 console.log('🔧 MANUAL FIX: Fresno City College → 36.76621911129075, -119.79727927331058');
+                
+                // CALCULATE VOTER DRIVE SUITABILITY AUTOMATICALLY
+                const suitabilityResult = calculateVoterDriveSuitability(college);
+                college.suitability = suitabilityResult.suitability;
+                college.suitabilityScore = suitabilityResult.score;
+                college.suitabilityDetails = suitabilityResult.details;
+                
                 return college;
             }
 
@@ -1275,6 +1387,13 @@
                     college.lng = -119.28154532208914;
                     college.geocodingSource = 'Manual fix for College of the Sequoias - Tulare';
                     console.log('🔧 MANUAL FIX: College of the Sequoias Tulare → 36.19600741316634, -119.28154532208914');
+                    
+                    // CALCULATE VOTER DRIVE SUITABILITY AUTOMATICALLY
+                    const suitabilityResult = calculateVoterDriveSuitability(college);
+                    college.suitability = suitabilityResult.suitability;
+                    college.suitabilityScore = suitabilityResult.score;
+                    college.suitabilityDetails = suitabilityResult.details;
+                    
                     return college;
                 }
             }
@@ -1285,6 +1404,13 @@
                 college.lng = -119.4597667;
                 college.geocodingSource = 'Manual fix for Taft College';
                 console.log('🔧 MANUAL FIX: Taft College → 35.149517884255346, -119.4597667');
+                
+                // CALCULATE VOTER DRIVE SUITABILITY AUTOMATICALLY
+                const suitabilityResult = calculateVoterDriveSuitability(college);
+                college.suitability = suitabilityResult.suitability;
+                college.suitabilityScore = suitabilityResult.score;
+                college.suitabilityDetails = suitabilityResult.details;
+                
                 return college;
             }
 
@@ -1294,6 +1420,13 @@
                 college.lng = -117.32982172444999;
                 college.geocodingSource = 'Manual fix for UC Riverside';
                 console.log('🔧 MANUAL FIX: UC Riverside → 33.97350351814895, -117.32982172444999');
+                
+                // CALCULATE VOTER DRIVE SUITABILITY AUTOMATICALLY
+                const suitabilityResult = calculateVoterDriveSuitability(college);
+                college.suitability = suitabilityResult.suitability;
+                college.suitabilityScore = suitabilityResult.score;
+                college.suitabilityDetails = suitabilityResult.details;
+                
                 return college;
             }
 
@@ -1302,12 +1435,26 @@
                 college.lng = -116.97132456626241;
                 college.geocodingSource = 'Manual fix for Mt. San Jacinto College - San Jacinto Campus';
                 console.log('🔧 MANUAL FIX: Mt. San Jacinto College San Jacinto → 33.806990713859385, -116.97132456626241');
+                
+                // CALCULATE VOTER DRIVE SUITABILITY AUTOMATICALLY
+                const suitabilityResult = calculateVoterDriveSuitability(college);
+                college.suitability = suitabilityResult.suitability;
+                college.suitabilityScore = suitabilityResult.score;
+                college.suitabilityDetails = suitabilityResult.details;
+                
                 return college;
             }
 
             // PRIORITY #3: Only geocode if no manual coordinates exist
             console.log('🔍 No manual coordinates found, will geocode ' + college.name);
             await addCoordinatesImproved(college);
+            
+            // CALCULATE VOTER DRIVE SUITABILITY AUTOMATICALLY
+            const suitabilityResult = calculateVoterDriveSuitability(college);
+            college.suitability = suitabilityResult.suitability;
+            college.suitabilityScore = suitabilityResult.score;
+            college.suitabilityDetails = suitabilityResult.details;
+            
             return college;
         }
 

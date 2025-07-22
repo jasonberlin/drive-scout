@@ -645,6 +645,7 @@
         let userLocationMarker;
         let collegeData = {};
         let loadedDistricts = new Set();
+        let districtBoundaries = null; // Store loaded district boundaries
 
         function findClosestDistricts() {
             const btn = document.getElementById('findClosestBtn');
@@ -970,12 +971,175 @@
                 
                 initializeMap();
                 
+                // Load district boundaries for the selected state
+                await loadDistrictBoundaries(state);
+                
                 setTimeout(function() {
                     addMarkersToMap(allColleges);
                 }, 200);
                 
                 displayCollegeListWithSections(district, withinColleges, nearColleges);
             }
+        }
+
+        async function loadDistrictBoundaries(state) {
+            // Mapping of states to their boundary file names
+            const boundaryFiles = {
+                'Arizona': 'boundaries/arizona_districts_119th.geojson',
+                'California': 'boundaries/california_districts_119th.geojson',
+                'Colorado': 'boundaries/colorado_districts_119th.geojson',
+                'Connecticut': 'boundaries/connecticut_districts_119th.geojson',
+                'Florida': 'boundaries/florida_districts_119th.geojson',
+                'Nevada': 'boundaries/nevada_districts_119th.geojson'
+            };
+            
+            const boundaryFile = boundaryFiles[state];
+            if (!boundaryFile) {
+                console.log('📍 No boundary file configured for state:', state);
+                return;
+            }
+            
+            // Check if we already loaded this state's boundaries
+            if (districtBoundaries && districtBoundaries.state === state) {
+                console.log('📍 District boundaries already loaded for', state);
+                addDistrictBoundariesToMap();
+                return;
+            }
+            
+            try {
+                console.log('📍 Loading district boundaries for', state, 'from', boundaryFile);
+                const response = await fetch(boundaryFile);
+                
+                if (!response.ok) {
+                    console.log('📍 Could not load boundary file:', boundaryFile, '- Status:', response.status);
+                    return;
+                }
+                
+                const geojsonData = await response.json();
+                
+                districtBoundaries = {
+                    state: state,
+                    data: geojsonData
+                };
+                
+                console.log('📍 Successfully loaded', geojsonData.features.length, 'district boundaries for', state);
+                addDistrictBoundariesToMap();
+                
+            } catch (error) {
+                console.log('📍 Error loading district boundaries:', error.message);
+            }
+        }
+
+        function addDistrictBoundariesToMap() {
+            if (!map || !districtBoundaries) {
+                return;
+            }
+            
+            // Remove existing district boundaries
+            if (map.districtLayer) {
+                map.removeLayer(map.districtLayer);
+            }
+            
+            // Style function for district boundaries
+            function districtStyle(feature) {
+                const districtId = getDistrictId(feature);
+                const districtInfo = districtData[districtId];
+                
+                // Default styling
+                let color = '#666666';
+                let fillColor = 'transparent';
+                let weight = 2;
+                let opacity = 0.8;
+                
+                // Color code based on party and action if this is a swing district
+                if (districtInfo) {
+                    if (districtInfo.action === 'FLIP') {
+                        color = '#FF6B35'; // Orange for flip districts
+                        weight = 3;
+                    } else if (districtInfo.action === 'HOLD') {
+                        color = districtInfo.party === 'D' ? '#4169E1' : '#DC143C'; // Blue for Dem, Red for Rep
+                        weight = 3;
+                    }
+                    opacity = 1.0;
+                }
+                
+                return {
+                    color: color,
+                    weight: weight,
+                    opacity: opacity,
+                    fillColor: fillColor,
+                    fillOpacity: 0.1
+                };
+            }
+            
+            // Create popup content for districts
+            function onEachDistrict(feature, layer) {
+                const districtId = getDistrictId(feature);
+                const districtInfo = districtData[districtId];
+                
+                let popupContent = '<div style="font-weight: bold; margin-bottom: 8px;">' + districtId + '</div>';
+                
+                if (districtInfo) {
+                    const partyColor = districtInfo.party === 'D' ? '#4169E1' : '#DC143C';
+                    const actionColor = districtInfo.action === 'FLIP' ? '#FF6B35' : '#4CAF50';
+                    
+                    popupContent += '<div style="margin-bottom: 4px;"><strong>Representative:</strong> ' + districtInfo.rep + '</div>';
+                    popupContent += '<div style="margin-bottom: 8px;">';
+                    popupContent += '<span style="background: ' + partyColor + '; color: white; padding: 3px 8px; border-radius: 15px; font-size: 0.8rem; margin-right: 5px;">' + districtInfo.party + '</span>';
+                    popupContent += '<span style="background: ' + actionColor + '; color: white; padding: 4px 10px; border-radius: 15px; font-size: 0.9rem;">' + districtInfo.action + '</span>';
+                    popupContent += '</div>';
+                    popupContent += '<div><strong>Cook PVI:</strong> ' + districtInfo.pvi + '</div>';
+                } else {
+                    popupContent += '<div style="color: #666;">Not a tracked swing district</div>';
+                }
+                
+                layer.bindPopup(popupContent);
+            }
+            
+            // Add the district boundaries to the map
+            map.districtLayer = L.geoJSON(districtBoundaries.data, {
+                style: districtStyle,
+                onEachFeature: onEachDistrict
+            }).addTo(map);
+            
+            console.log('📍 District boundaries added to map');
+        }
+        
+        function getDistrictId(feature) {
+            // Extract district ID from the GeoJSON feature properties
+            // Census Bureau files typically use different field names
+            const props = feature.properties;
+            
+            // Try common field names used by Census Bureau
+            if (props.GEOID) {
+                // GEOID format is typically SSFP where SS = state FIPS, FP = district number
+                const stateCode = props.GEOID.substring(0, 2);
+                const districtNum = props.GEOID.substring(2);
+                return getStateAbbrev(stateCode) + '-' + districtNum.padStart(2, '0');
+            }
+            
+            if (props.CD119FP && props.STATEFP) {
+                return getStateAbbrev(props.STATEFP) + '-' + props.CD119FP.padStart(2, '0');
+            }
+            
+            // Fallback - try to extract from name fields
+            if (props.NAMELSAD) {
+                // Example: "Congressional District 1"
+                const match = props.NAMELSAD.match(/(\d+)/);
+                if (match) {
+                    return getStateAbbrev(props.STATEFP || '04') + '-' + match[1].padStart(2, '0');
+                }
+            }
+            
+            return 'UNKNOWN';
+        }
+        
+        function getStateAbbrev(fipsCode) {
+            const fipsToState = {
+                '02': 'AK', '04': 'AZ', '06': 'CA', '08': 'CO', 
+                '09': 'CT', '12': 'FL', '32': 'NV'
+            };
+            return fipsToState[fipsCode] || 'XX';
         }
 
         async function loadDistrictData(district) {

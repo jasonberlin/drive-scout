@@ -1007,7 +1007,7 @@
                 
                 setTimeout(function() {
                     addMarkersToMap(allColleges);
-                    // Highlight the selected district on the boundaries
+                    // Always update district boundaries to highlight the correct district
                     addDistrictBoundariesToMap(district);
                 }, 200);
                 
@@ -1065,10 +1065,16 @@
                 
                 if (!response.ok) {
                     console.log('📍 Could not load boundary file:', boundaryFile, '- Status:', response.status);
+                    console.log('📍 Make sure the file exists at:', window.location.origin + '/' + boundaryFile);
                     return;
                 }
                 
                 const geojsonData = await response.json();
+                
+                if (!geojsonData || !geojsonData.features) {
+                    console.log('📍 Invalid GeoJSON data loaded from', boundaryFile);
+                    return;
+                }
                 
                 districtBoundaries = {
                     state: state,
@@ -1076,10 +1082,12 @@
                 };
                 
                 console.log('📍 Successfully loaded', geojsonData.features.length, 'district boundaries for', state);
+                console.log('📍 Sample feature:', geojsonData.features[0]?.properties);
                 // Don't add to map here - it will be called later with the selected district
                 
             } catch (error) {
                 console.log('📍 Error loading district boundaries:', error.message);
+                console.log('📍 Full error:', error);
             }
         }
 
@@ -1091,9 +1099,10 @@
             // Store the selected district for toggle functionality
             currentSelectedDistrict = selectedDistrict;
             
-            // Remove existing district boundaries
+            // ALWAYS remove existing district boundaries to ensure clean refresh
             if (map.districtLayer) {
                 map.removeLayer(map.districtLayer);
+                map.districtLayer = null;
             }
             
             // Style function for district boundaries

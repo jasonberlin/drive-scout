@@ -457,7 +457,7 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // Congressional district data with representatives, parties, Cook PVI, and biggest cities
+        // Congressional district data with representatives, parties, Cook PVI, and biggest cities - UPDATED FOR 119th CONGRESS
         const districtData = {
             'AK-AL': { 
                 rep: 'Mary Peltola', 
@@ -532,9 +532,9 @@
                 cities: ['Bakersfield', 'Delano', 'Wasco', 'Shafter', 'Taft']
             },
             'CA-27': { 
-                rep: 'Mike Garcia', 
-                party: 'R', 
-                action: 'FLIP', 
+                rep: 'George Whitesides', 
+                party: 'D', 
+                action: 'HOLD', 
                 pvi: 'D+4', 
                 center: [34.2411, -118.5289],
                 cities: ['Santa Clarita', 'Palmdale', 'Lancaster', 'Simi Valley', 'Moorpark']
@@ -2012,10 +2012,6 @@
                         '<div class="detail-value">' +
                             '<span class="suitability-badge suitability-' + college.suitability.toLowerCase() + '">' + college.suitability + '</span>' +
                         '</div>' +
-                    '</div>' +
-                    '<div class="detail-item">' +
-                        '<div class="detail-label">Contact</div>' +
-                        '<div class="detail-value">' + (college.phone || 'Not available') + '</div>' +
                     '</div>' +
                 '</div>' +
                 '<div class="college-actions">' +

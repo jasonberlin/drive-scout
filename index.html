@@ -1242,29 +1242,292 @@
             }
         }
 
+        // Known college coordinates - ONLY as last resort fallback
+        const knownCollegeCoordinates = {
+            // AZ-01 colleges
+            'Scottsdale Community College': [33.4942, -111.9261],
+            'Arizona State University - Tempe Campus': [33.4255, -111.9400],
+            'Arizona State University - Downtown Phoenix Campus': [33.4518, -112.0740],
+            'Arizona State University - West Campus': [33.6068, -112.1626],
+            'Arizona State University - Polytechnic Campus': [33.3062, -111.6790],
+            'Paradise Valley Community College': [33.6532, -112.0090],
+            
+            // AZ-02 colleges (updated with revised data)
+            'Northern Arizona University': [35.1815, -111.6560],
+            'Coconino Community College - Lone Tree Campus': [35.1751, -111.6182],
+            'Coconino Community College - Fourth Street Campus': [35.2186, -111.6513],
+            'Embry-Riddle Aeronautical University - Prescott': [34.6146, -112.4504],
+            'Prescott College': [34.5401, -112.4685],
+            'Yavapai College - Prescott Campus': [34.5401, -112.4685],
+            'Yavapai College - Verde Valley Campus': [34.7539, -112.1026],
+            'Yavapai College - Sedona Center': [34.8697, -111.7610],
+            'Northland Pioneer College - Holbrook Campus': [34.9025, -110.1565],
+            'Northland Pioneer College - Show Low Campus': [34.2542, -110.0298],
+            'Northland Pioneer College - Snowflake Campus': [34.5128, -110.0784],
+            'Northland Pioneer College - Winslow Campus': [35.0242, -110.6973],
+            'Diné College - Tsaile Campus': [36.2950, -109.2014],
+            'Coconino Community College - Page Campus': [36.9147, -111.4558],
+            'Glendale Community College': [33.5729, -112.1826],
+            'Central Arizona College - Apache Junction Campus': [33.4481, -111.5496],
+            
+            // CA-09 colleges
+            'San Joaquin Delta College - Stockton Campus': [37.9577, -121.2908],
+            'San Joaquin Delta College - Mountain House Campus': [37.7617, -121.5380],
+            'University of the Pacific': [37.9792, -121.3047],
+            'California State University Stanislaus - Stockton Campus': [37.9577, -121.2908],
+            'California State University Stanislaus - Main Campus': [37.5289, -120.8444],
+
+            // CA-41 colleges
+            'UC Riverside': [33.97350351814895, -117.32982172444999],
+            'University of California Riverside': [33.97350351814895, -117.32982172444999],
+            'Mt. San Jacinto College - San Jacinto Campus': [33.806990713859385, -116.97132456626241],
+            
+            // CA-45 colleges
+            'Coastline College - Westminster Campus': [33.75725775515292, -117.98479549944804],
+            'Chapman University': [33.79281969747484, -117.85425622884149],
+            'Saddleback College': [33.554461451895634, -117.66402935613554],
+            
+            // CA-49 colleges
+            'MiraCosta College - San Elijo Campus': [33.0175403843811, -117.25819318280678],
+        };
+
+        // State and city coordinates for fallbacks
+        const stateCoordinates = {
+            'AK': [64.0685, -152.2782],
+            'AZ': [34.0489, -111.0937],
+            'CA': [36.7783, -119.4179],
+            'CO': [39.7392, -104.9903],
+            'CT': [41.6032, -73.0877],
+            'FL': [27.7663, -82.6404],
+            'NV': [38.8026, -116.4194]
+        };
+
+        const cityCoordinates = {
+            'Anchorage': [61.2181, -149.9003],
+            'Fairbanks': [64.8401, -147.7194],
+            'Scottsdale': [33.4942, -111.9261],
+            'Phoenix': [33.4484, -112.0740],
+            'Flagstaff': [35.1983, -111.6513],
+            'Tempe': [33.4255, -111.9400],
+            'Tucson': [32.2226, -110.9747],
+            'Mesa': [33.4152, -111.8315],
+            'Glendale': [33.5387, -112.1860],
+            'Chandler': [33.3062, -111.8413],
+            'Peoria': [33.5806, -112.2374],
+            'Surprise': [33.6292, -112.3679],
+            'Avondale': [33.4356, -112.3496],
+            'Goodyear': [33.4355, -112.3579],
+            'Buckeye': [33.3703, -112.5838],
+            'El Mirage': [33.6131, -112.3249],
+            'Tolleson': [33.4503, -112.2585],
+            'Youngtown': [33.5937, -112.3018],
+            'Las Vegas': [36.1699, -115.1398],
+            'Henderson': [36.0397, -114.9817],
+            'Stockton': [37.9577, -121.2908],
+            'Merced': [37.3022, -120.4829],
+            'Irvine': [33.6846, -117.8265]
+        };
+
         async function addCoordinatesForDistrict(college, district) {
-            // Get approximate coordinates based on district
+            console.log('🗺️ Starting coordinate lookup for:', college.name);
+            
+            // PRIORITY #1: Check manual coordinates database FIRST
+            const knownCoords = findKnownCoordinates(college.name);
+            if (knownCoords) {
+                college.lat = knownCoords[0];
+                college.lng = knownCoords[1];
+                college.geocodingSource = 'Manual override database';
+                console.log('⚡ MANUAL OVERRIDE: ' + college.name + ' → ' + college.lat + ', ' + college.lng);
+                return;
+            }
+
+            // PRIORITY #2: For CA-21 colleges with wrong addresses, use EXACT coordinates
+            if (college.name.includes('Fresno City College')) {
+                college.lat = 36.76621911129075;
+                college.lng = -119.79727927331058;
+                college.geocodingSource = 'Manual fix for Fresno City College';
+                console.log('🔧 MANUAL FIX: Fresno City College → 36.76621911129075, -119.79727927331058');
+                return;
+            }
+
+            if (college.name.includes('College of the Sequoias')) {
+                if (college.address && college.address.includes('Tulare')) {
+                    college.lat = 36.19600741316634;
+                    college.lng = -119.28154532208914;
+                    college.geocodingSource = 'Manual fix for College of the Sequoias - Tulare';
+                    console.log('🔧 MANUAL FIX: College of the Sequoias Tulare → 36.19600741316634, -119.28154532208914');
+                    return;
+                }
+            }
+
+            // PRIORITY #3: For CA-22 colleges with wrong addresses, use EXACT coordinates
+            if (college.name.includes('Taft College')) {
+                college.lat = 35.149517884255346;
+                college.lng = -119.4597667;
+                college.geocodingSource = 'Manual fix for Taft College';
+                console.log('🔧 MANUAL FIX: Taft College → 35.149517884255346, -119.4597667');
+                return;
+            }
+
+            // PRIORITY #4: For CA-41 colleges with wrong addresses, use EXACT coordinates
+            if (college.name.includes('UC Riverside') || college.name.includes('University of California') && college.name.includes('Riverside')) {
+                college.lat = 33.97350351814895;
+                college.lng = -117.32982172444999;
+                college.geocodingSource = 'Manual fix for UC Riverside';
+                console.log('🔧 MANUAL FIX: UC Riverside → 33.97350351814895, -117.32982172444999');
+                return;
+            }
+
+            if (college.name.includes('Mt. San Jacinto College') && college.name.includes('San Jacinto')) {
+                college.lat = 33.806990713859385;
+                college.lng = -116.97132456626241;
+                college.geocodingSource = 'Manual fix for Mt. San Jacinto College - San Jacinto Campus';
+                console.log('🔧 MANUAL FIX: Mt. San Jacinto College San Jacinto → 33.806990713859385, -116.97132456626241');
+                return;
+            }
+
+            // PRIORITY #5: Try geocoding the address if available
+            if (college.address || (college.streetAddress && college.city && college.state)) {
+                console.log('🔍 No manual coordinates found, will geocode ' + college.name);
+                await addCoordinatesImproved(college);
+                return;
+            }
+
+            // PRIORITY #6: Use district center as last resort
             const districtInfo = districtData[district];
             if (districtInfo && districtInfo.center) {
-                // Place colleges near the district center with some randomization
                 const centerLat = districtInfo.center[0];
                 const centerLng = districtInfo.center[1];
-                
-                // Add random offset within ~20 miles of district center
-                const latOffset = (Math.random() - 0.5) * 0.5; // ~25 miles
-                const lngOffset = (Math.random() - 0.5) * 0.5; // ~25 miles
+                const latOffset = (Math.random() - 0.5) * 0.1;
+                const lngOffset = (Math.random() - 0.5) * 0.1;
                 
                 college.lat = centerLat + latOffset;
                 college.lng = centerLng + lngOffset;
                 college.geocodingSource = 'District-based coordinates';
-                
-                console.log('📍 Placed ' + college.name + ' at: ' + college.lat + ', ' + college.lng + ' (near ' + district + ')');
+                console.log('📍 Placed ' + college.name + ' near district center: ' + college.lat + ', ' + college.lng);
             } else {
-                // Fallback to US center
-                college.lat = 39.8283 + (Math.random() - 0.5) * 0.1;
-                college.lng = -98.5795 + (Math.random() - 0.5) * 0.1;
-                college.geocodingSource = 'Fallback coordinates';
+                useFallbackCoordinates(college);
             }
+        }
+
+        function findKnownCoordinates(collegeName) {
+            // Try exact match first
+            if (knownCollegeCoordinates[collegeName]) {
+                return knownCollegeCoordinates[collegeName];
+            }
+
+            // Try fuzzy matching
+            const nameNormalized = collegeName.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+            
+            for (const knownName in knownCollegeCoordinates) {
+                const knownNameNormalized = knownName.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+                
+                if (nameNormalized.includes(knownNameNormalized) || knownNameNormalized.includes(nameNormalized)) {
+                    return knownCollegeCoordinates[knownName];
+                }
+            }
+
+            return null;
+        }
+
+        async function addCoordinatesImproved(college) {
+            // Simplified geocoding for now - this can be expanded with the full geocoding logic
+            const addressQueries = buildAddressQueries(college);
+            
+            for (let i = 0; i < addressQueries.length; i++) {
+                const query = addressQueries[i];
+                console.log('🔍 Geocoding attempt ' + (i + 1) + '/' + addressQueries.length + ' for ' + college.name + ': ' + query);
+                
+                const coords = await geocodeAddressExact(query, college);
+                if (coords && coords.lat && coords.lng) {
+                    college.lat = coords.lat;
+                    college.lng = coords.lng;
+                    college.geocodingSource = 'Address: ' + query.substring(0, 50) + '...';
+                    console.log('✅ SUCCESS! Geocoded ' + college.name + ' to: ' + college.lat + ', ' + college.lng);
+                    return;
+                }
+                
+                await delay(750);
+            }
+
+            console.log('⚠️ All address geocoding failed for ' + college.name);
+            useFallbackCoordinates(college);
+        }
+
+        function buildAddressQueries(college) {
+            const queries = [];
+            
+            if (college.streetAddress && (college.city || college.addressCity) && college.state) {
+                const city = college.city || college.addressCity;
+                const zipPart = college.zipCode ? ' ' + college.zipCode : '';
+                const query1 = college.streetAddress + ', ' + city + ', ' + college.state + zipPart;
+                queries.push(query1);
+            }
+            
+            if (college.address && college.address.includes(',')) {
+                queries.push(college.address);
+            }
+            
+            if ((college.city || college.addressCity) && college.state) {
+                const city = college.city || college.addressCity;
+                const query5 = college.name + ', ' + city + ', ' + college.state;
+                queries.push(query5);
+            }
+            
+            return queries.filter(q => q && q.length > 10);
+        }
+
+        async function geocodeAddressExact(address, college) {
+            try {
+                const encodedAddress = encodeURIComponent(address);
+                const url = 'https://nominatim.openstreetmap.org/search?format=json&q=' + encodedAddress + 
+                           '&limit=5&addressdetails=1&countrycodes=us';
+                
+                const response = await fetch(url);
+                if (!response.ok) {
+                    console.log('Geocoding request failed:', response.status);
+                    return null;
+                }
+                
+                const data = await response.json();
+                
+                if (data && data.length > 0) {
+                    const bestMatch = data[0]; // Use first result for now
+                    if (bestMatch) {
+                        return {
+                            lat: parseFloat(bestMatch.lat),
+                            lng: parseFloat(bestMatch.lon)
+                        };
+                    }
+                }
+                
+                return null;
+            } catch (error) {
+                console.log('Geocoding error:', error);
+                return null;
+            }
+        }
+
+        function useFallbackCoordinates(college) {
+            const city = college.city || college.addressCity || '';
+            if (cityCoordinates[city]) {
+                college.lat = cityCoordinates[city][0];
+                college.lng = cityCoordinates[city][1];
+                college.geocodingSource = 'City coordinates: ' + city;
+                console.log('📍 Using city coordinates for ' + college.name + ': ' + college.lat + ', ' + college.lng);
+                return;
+            }
+            
+            const stateCode = college.state || college.district.split('-')[0] || 'CA';
+            const stateCoords = stateCoordinates[stateCode] || [39.8283, -98.5795];
+            college.lat = stateCoords[0] + (Math.random() - 0.5) * 0.1;
+            college.lng = stateCoords[1] + (Math.random() - 0.5) * 0.1;
+            college.geocodingSource = 'State default: ' + stateCode;
+            console.log('🌐 Using state default for ' + college.name + ': ' + college.lat + ', ' + college.lng);
+        }
+
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
         }
 
         function parseCSVLine(line) {

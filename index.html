@@ -822,6 +822,9 @@
             'Coastline College - Westminster Campus': [33.75725775515292, -117.98479549944804], // Manual override coordinates
             'Chapman University': [33.79281969747484, -117.85425622884149], // Manual override coordinates
             'Saddleback College': [33.554461451895634, -117.66402935613554], // Manual override coordinates
+            
+            // CA-49 colleges
+            'MiraCosta College - San Elijo Campus': [33.0175403843811, -117.25819318280678], // Manual override coordinates
         };
 
         // State and city coordinates for fallbacks
@@ -1102,6 +1105,20 @@
             return colleges;
         }
 
+        function isExcludedCollege(name) {
+            const nameUpper = name.toUpperCase();
+            
+            // List of specific colleges to exclude
+            const excludedColleges = [
+                'MT. SAN ANTONIO COLLEGE',
+                'MT SAN ANTONIO COLLEGE',
+                'MOUNT SAN ANTONIO COLLEGE'
+            ];
+            
+            // Check if the college name matches any excluded colleges
+            return excludedColleges.some(excluded => nameUpper.includes(excluded));
+        }
+
         function isChristianSchool(name) {
             const nameUpper = name.toUpperCase();
             
@@ -1282,6 +1299,12 @@
             // Filter out Christian/religious institutions
             if (isChristianSchool(college.name)) {
                 console.log('❌ Filtering out Christian school:', college.name);
+                return null;
+            }
+
+            // Filter out specific excluded colleges
+            if (isExcludedCollege(college.name)) {
+                console.log('❌ Filtering out excluded college:', college.name);
                 return null;
             }
 

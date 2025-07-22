@@ -797,14 +797,18 @@
                 html += '<div style="color: #667eea; font-weight: bold; font-size: 1.0rem;">' + Math.round(district.distance) + ' miles</div>';
                 html += '</div>';
                 
-                // Representative and badges
+                // Representative and party together
                 html += '<div style="text-align: center; margin-bottom: 8px;">';
-                html += '<div style="color: #666; margin-bottom: 8px;">' + district.rep + '</div>';
-                html += '<div style="display: flex; align-items: center; gap: 10px; justify-content: center; flex-wrap: wrap;">';
+                html += '<div style="color: #666; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 8px;">';
+                html += '<span>' + district.rep + '</span>';
                 
-                // Party label with proper colors
+                // Party label with proper colors - right next to name
                 const partyColor = district.party === 'D' ? '#4169E1' : '#DC143C';
                 html += '<span style="background: ' + partyColor + '; color: white; padding: 3px 8px; border-radius: 15px; font-size: 0.8rem; font-weight: bold;">' + district.party + '</span>';
+                html += '</div>';
+                
+                // Action and PVI badges centered
+                html += '<div style="display: flex; align-items: center; gap: 10px; justify-content: center; flex-wrap: wrap;">';
                 
                 // Action label with proper colors
                 const actionColor = district.action === 'FLIP' ? '#FF6B35' : '#4CAF50';
@@ -998,11 +1002,369 @@
         }
 
         function displayColleges(state, district) {
-            console.log('Attempting to display colleges for:', state, district);
+            document.getElementById('collegeItems').innerHTML = '<div class="loading-modern"><div class="loading-spinner"></div><h3>Loading ' + district + ' college data...</h3><p>Please wait while we fetch the latest information.</p></div>';
+            document.getElementById('collegeList').style.display = 'block';
+
+            loadDistrictData(district).then(() => {
+                const collegeDataForDistrict = collegeData[state] && collegeData[state][district] ? collegeData[state][district] : [];
+                
+                let allColleges = [];
+                let withinColleges = [];
+                let nearColleges = [];
+
+                if (Array.isArray(collegeDataForDistrict)) {
+                    allColleges = collegeDataForDistrict;
+                    withinColleges = collegeDataForDistrict;
+                } else if (collegeDataForDistrict.within || collegeDataForDistrict.near) {
+                    withinColleges = collegeDataForDistrict.within || [];
+                    nearColleges = collegeDataForDistrict.near || [];
+                    allColleges = withinColleges.concat(nearColleges);
+                }
+                
+                if (allColleges.length === 0) {
+                    showNoData(state, district);
+                } else {
+                    updateStats(allColleges);
+                    
+                    document.getElementById('stats').style.display = 'grid';
+                    document.getElementById('mapContainer').style.display = 'block';
+                    document.getElementById('collegeList').style.display = 'block';
+                    
+                    initializeMap();
+                    
+                    setTimeout(function() {
+                        addMarkersToMap(allColleges);
+                    }, 200);
+                    
+                    displayCollegeListWithSections(district, withinColleges, nearColleges);
+                }
+            });
+        }
+
+        async function loadDistrictData(district) {
+            if (loadedDistricts.has(district)) {
+                return;
+            }
+
+            try {
+                const possibleFilenames = [
+                    'data/' + district + '.csv',
+                    'data/' + district.replace('-', '') + '.csv',
+                    district + '.csv',
+                    district.replace('-', '') + '.csv'
+                ];
+
+                let csvText = null;
+                let successfulUrl = null;
+
+                for (let i = 0; i < possibleFilenames.length; i++) {
+                    const filename = possibleFilenames[i];
+                    try {
+                        console.log('Trying to load: ' + filename);
+                        const response = await fetch(filename);
+                        if (response.ok) {
+                            csvText = await response.text();
+                            successfulUrl = filename;
+                            console.log('Successfully loaded: ' + filename);
+                            break;
+                        }
+                    } catch (error) {
+                        console.log('Failed to load ' + filename + ':', error.message);
+                    }
+                }
+
+                if (!csvText) {
+                    console.log('No CSV file found for ' + district);
+                    loadedDistricts.add(district);
+                    return;
+                }
+
+                const colleges = await parseCSV(csvText, district);
+                
+                const state = Object.keys(districtMappings).find(function(s) {
+                    return districtMappings[s].includes(district);
+                });
+
+                if (state && colleges) {
+                    collegeData[state][district] = colleges;
+                    console.log('Loaded data for ' + district + ' from ' + successfulUrl);
+                }
+
+                loadedDistricts.add(district);
+            } catch (error) {
+                console.log('Error loading data for ' + district + ':', error);
+                loadedDistricts.add(district);
+            }
+        }
+
+        async function parseCSV(csvText, district) {
+            const lines = csvText.split('\n').filter(function(line) {
+                return line.trim();
+            });
             
-            // Show a message that this district is ready for data
+            if (lines.length < 3) {
+                return { within: [], near: [] };
+            }
+
+            const colleges = { within: [], near: [] };
+            let currentSection = 'within';
+            let headers = [];
+            let headerRowFound = false;
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                
+                // Skip section separator lines and headers
+                if (line.toUpperCase().includes('COLLEGES AND UNIVERSITIES NEAR') || 
+                    line.toUpperCase().includes('COLLEGES NEAR')) {
+                    currentSection = 'near';
+                    headerRowFound = false;
+                    console.log('📋 Switching to NEAR section');
+                    continue;
+                } else if (line.toUpperCase().includes('COLLEGES AND UNIVERSITIES WITHIN') ||
+                           line.toUpperCase().includes('COLLEGES IN')) {
+                    currentSection = 'within';
+                    headerRowFound = false;
+                    console.log('📋 Switching to WITHIN section');
+                    continue;
+                }
+
+                const values = parseCSVLine(line);
+                
+                // Skip empty lines
+                if (values.length === 0 || !values[0] || values[0].trim() === '') {
+                    continue;
+                }
+
+                // Check if this is a header row
+                if (!headerRowFound && (values[0].toLowerCase().includes('institution') || 
+                                       values[0].toLowerCase() === 'institution name')) {
+                    headers = values.map(function(h) { return h.trim(); });
+                    headerRowFound = true;
+                    console.log('Found headers for ' + currentSection + ' section:', headers);
+                    continue;
+                }
+
+                // Skip if we haven't found headers yet
+                if (!headerRowFound || headers.length === 0) {
+                    continue;
+                }
+
+                // Skip header repetitions in data
+                if (values[0].toLowerCase().includes('institution name') || 
+                    values[0].toLowerCase() === 'institution name') {
+                    console.log('Skipping duplicate header row');
+                    continue;
+                }
+
+                // Parse college data - simplified version for now
+                const college = {
+                    name: values[0].trim() || '',
+                    district: district,
+                    section: currentSection,
+                    enrollment: 2000,
+                    suitability: "High",
+                    type: "College",
+                    publicPrivate: "Public",
+                    lat: 39.8283 + (Math.random() - 0.5) * 0.1,
+                    lng: -98.5795 + (Math.random() - 0.5) * 0.1
+                };
+
+                if (college.name && college.name.length > 3) {
+                    colleges[currentSection].push(college);
+                }
+            }
+
+            console.log('Parsed ' + colleges.within.length + ' colleges within ' + district + ' and ' + colleges.near.length + ' colleges near ' + district);
+            return colleges;
+        }
+
+        function parseCSVLine(line) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            let i = 0;
+
+            while (i < line.length) {
+                const char = line[i];
+                
+                if (char === '"') {
+                    if (inQuotes && line[i + 1] === '"') {
+                        current += '"';
+                        i += 2;
+                        continue;
+                    } else {
+                        inQuotes = !inQuotes;
+                    }
+                } else if (char === ',' && !inQuotes) {
+                    result.push(current.trim());
+                    current = '';
+                } else {
+                    current += char;
+                }
+                i++;
+            }
+            
+            result.push(current.trim());
+            return result.map(function(item) {
+                return item.replace(/^"|"$/g, '');
+            });
+        }
+
+        function updateStats(colleges) {
+            const total = colleges.length;
+            const highSuitability = colleges.filter(function(c) {
+                return c.suitability === 'High';
+            }).length;
+            const totalEnrollment = colleges.reduce(function(sum, c) {
+                return sum + c.enrollment;
+            }, 0);
+
+            document.getElementById('totalColleges').textContent = total;
+            document.getElementById('highSuitability').textContent = highSuitability;
+            document.getElementById('totalEnrollment').textContent = totalEnrollment.toLocaleString();
+        }
+
+        function initializeMap() {
+            if (map) {
+                map.remove();
+            }
+
+            setTimeout(function() {
+                map = L.map('map').setView([39.8283, -98.5795], 4);
+                
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors',
+                    maxZoom: 18
+                }).addTo(map);
+
+                setTimeout(function() {
+                    if (map) {
+                        map.invalidateSize();
+                    }
+                }, 100);
+            }, 50);
+        }
+
+        function addMarkersToMap(colleges) {
+            clearMarkers();
+            
+            if (colleges.length === 0 || !map) return;
+
+            const group = new L.featureGroup();
+
+            colleges.forEach(function(college) {
+                if (!college.lat || !college.lng) {
+                    console.log('Skipping college without coordinates:', college.name);
+                    return;
+                }
+
+                const iconColor = getSuitabilityColor(college.suitability);
+                
+                const marker = L.marker([college.lat, college.lng], {
+                    icon: L.divIcon({
+                        className: 'custom-marker',
+                        html: '<div style="background-color: ' + iconColor + '; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 3px 6px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 12px;">📍</div>',
+                        iconSize: [24, 24],
+                        iconAnchor: [12, 12]
+                    })
+                });
+
+                const popupContent = createPopupContent(college);
+                marker.bindPopup(popupContent, { maxWidth: 400 });
+                
+                marker.addTo(map);
+                group.addLayer(marker);
+                markers.push(marker);
+            });
+
+            if (group.getLayers().length > 0) {
+                map.fitBounds(group.getBounds(), { padding: [50, 50] });
+            }
+        }
+
+        function getSuitabilityColor(suitability) {
+            switch (suitability) {
+                case 'High': return '#28a745';
+                case 'Medium': return '#ffc107';
+                case 'Low': return '#dc3545';
+                default: return '#6c757d';
+            }
+        }
+
+        function createPopupContent(college) {
+            return '<div style="max-width: 350px;">' +
+                '<div style="font-weight: bold; margin-bottom: 8px; color: #333; font-size: 1.1rem;">' + college.name + '</div>' +
+                '<div style="margin-bottom: 4px; font-size: 0.9rem;"><strong>Type:</strong> ' + college.type + '</div>' +
+                '<div style="margin-bottom: 4px; font-size: 0.9rem;"><strong>Enrollment:</strong> ' + college.enrollment.toLocaleString() + '</div>' +
+                '<div style="margin-bottom: 4px; font-size: 0.9rem;"><strong>Suitability:</strong> ' + college.suitability + '</div>' +
+                '</div>';
+        }
+
+        function clearMarkers() {
+            markers.forEach(function(marker) {
+                if (map) {
+                    map.removeLayer(marker);
+                }
+            });
+            markers = [];
+        }
+
+        function displayCollegeListWithSections(district, withinColleges, nearColleges) {
+            const container = document.getElementById('collegeItems');
+            container.innerHTML = '';
+
+            if (withinColleges.length > 0) {
+                const withinSection = document.createElement('div');
+                withinSection.innerHTML = '<h2 style="margin-bottom: 20px; color: #333; border-bottom: 2px solid #667eea; padding-bottom: 10px;">COLLEGES IN ' + district + '</h2>';
+                container.appendChild(withinSection);
+
+                withinColleges.forEach(function(college) {
+                    const collegeElement = createCollegeElement(college);
+                    container.appendChild(collegeElement);
+                });
+            }
+
+            if (nearColleges.length > 0) {
+                const nearSection = document.createElement('div');
+                nearSection.innerHTML = '<h2 style="margin: 40px 0 20px 0; color: #333; border-bottom: 2px solid #764ba2; padding-bottom: 10px;">COLLEGES NEAR ' + district + '</h2>';
+                container.appendChild(nearSection);
+
+                nearColleges.forEach(function(college) {
+                    const collegeElement = createCollegeElement(college, true);
+                    container.appendChild(collegeElement);
+                });
+            }
+        }
+
+        function createCollegeElement(college, showDistance) {
+            const div = document.createElement('div');
+            div.className = 'college-item';
+            
+            div.innerHTML = '<div class="college-name">' + college.name + '</div>' +
+                '<div class="college-details">' +
+                    '<div class="detail-item">' +
+                        '<div class="detail-label">Type</div>' +
+                        '<div class="detail-value">' + college.type + ' (' + college.publicPrivate + ')</div>' +
+                    '</div>' +
+                    '<div class="detail-item">' +
+                        '<div class="detail-label">Enrollment</div>' +
+                        '<div class="detail-value">' + college.enrollment.toLocaleString() + '</div>' +
+                    '</div>' +
+                    '<div class="detail-item">' +
+                        '<div class="detail-label">Voter Drive Suitability</div>' +
+                        '<div class="detail-value">' +
+                            '<span class="suitability-badge suitability-' + college.suitability.toLowerCase() + '">' + college.suitability + '</span>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
+
+            return div;
+        }
+
+        function showNoData(state, district) {
             document.getElementById('collegeItems').innerHTML = 
-                '<div style="text-align: center; padding: 40px; color: #666;">' +
+                '<div class="no-data">' +
                     '<h3>Ready for ' + district + ' data</h3>' +
                     '<p><strong>To add your data:</strong></p>' +
                     '<ol style="text-align: left; max-width: 500px; margin: 20px auto;">' +
@@ -1013,19 +1375,7 @@
                     '</ol>' +
                     '<p style="margin-top: 20px;"><em>This district is mapped but waiting for CSV data.</em></p>' +
                 '</div>';
-            
             document.getElementById('collegeList').style.display = 'block';
-            
-            // Show placeholder stats
-            document.getElementById('totalColleges').textContent = '0';
-            document.getElementById('highSuitability').textContent = '0';
-            document.getElementById('totalEnrollment').textContent = '0';
-            document.getElementById('stats').style.display = 'grid';
-        }
-
-        function clearMarkers() {
-            // Placeholder function for when we add maps back
-            console.log('clearMarkers called (placeholder)');
         }
 
         // Initialize the app when the page loads

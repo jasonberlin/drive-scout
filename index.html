@@ -976,6 +976,8 @@
                 
                 setTimeout(function() {
                     addMarkersToMap(allColleges);
+                    // Highlight the selected district on the boundaries
+                    addDistrictBoundariesToMap(district);
                 }, 200);
                 
                 displayCollegeListWithSections(district, withinColleges, nearColleges);
@@ -1002,8 +1004,7 @@
             // Check if we already loaded this state's boundaries
             if (districtBoundaries && districtBoundaries.state === state) {
                 console.log('📍 District boundaries already loaded for', state);
-                addDistrictBoundariesToMap();
-                return;
+                return; // Don't call addDistrictBoundariesToMap here - it will be called later
             }
             
             try {
@@ -1023,14 +1024,14 @@
                 };
                 
                 console.log('📍 Successfully loaded', geojsonData.features.length, 'district boundaries for', state);
-                addDistrictBoundariesToMap();
+                // Don't add to map here - it will be called later with the selected district
                 
             } catch (error) {
                 console.log('📍 Error loading district boundaries:', error.message);
             }
         }
 
-        function addDistrictBoundariesToMap() {
+        function addDistrictBoundariesToMap(selectedDistrict = null) {
             if (!map || !districtBoundaries) {
                 return;
             }
@@ -1044,12 +1045,14 @@
             function districtStyle(feature) {
                 const districtId = getDistrictId(feature);
                 const districtInfo = districtData[districtId];
+                const isSelected = selectedDistrict && districtId === selectedDistrict;
                 
                 // Default styling
                 let color = '#666666';
                 let fillColor = 'transparent';
                 let weight = 2;
-                let opacity = 0.8;
+                let opacity = 0.3; // Reduced opacity for non-selected districts
+                let fillOpacity = 0;
                 
                 // Color code based on party and action if this is a swing district
                 if (districtInfo) {
@@ -1060,7 +1063,18 @@
                         color = districtInfo.party === 'D' ? '#4169E1' : '#DC143C'; // Blue for Dem, Red for Rep
                         weight = 3;
                     }
-                    opacity = 1.0;
+                    opacity = 0.6; // Higher opacity for swing districts
+                }
+                
+                // HIGHLIGHT SELECTED DISTRICT
+                if (isSelected) {
+                    weight = 5; // Thicker border
+                    opacity = 1.0; // Full opacity
+                    fillOpacity = 0.15; // Light fill to highlight the area
+                    fillColor = color; // Fill with the same color as border
+                    
+                    // Add a subtle glow effect with a second border
+                    // We'll handle this with CSS-like effects
                 }
                 
                 return {
@@ -1068,7 +1082,10 @@
                     weight: weight,
                     opacity: opacity,
                     fillColor: fillColor,
-                    fillOpacity: 0.1
+                    fillOpacity: fillOpacity,
+                    // Add a subtle animation for the selected district
+                    dashArray: isSelected ? '' : '',
+                    className: isSelected ? 'selected-district' : ''
                 };
             }
             
@@ -1076,8 +1093,13 @@
             function onEachDistrict(feature, layer) {
                 const districtId = getDistrictId(feature);
                 const districtInfo = districtData[districtId];
+                const isSelected = selectedDistrict && districtId === selectedDistrict;
                 
-                let popupContent = '<div style="font-weight: bold; margin-bottom: 8px;">' + districtId + '</div>';
+                let popupContent = '<div style="font-weight: bold; margin-bottom: 8px; font-size: 1.1rem;">' + districtId;
+                if (isSelected) {
+                    popupContent += ' <span style="background: #4CAF50; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem;">SELECTED</span>';
+                }
+                popupContent += '</div>';
                 
                 if (districtInfo) {
                     const partyColor = districtInfo.party === 'D' ? '#4169E1' : '#DC143C';
@@ -1089,11 +1111,34 @@
                     popupContent += '<span style="background: ' + actionColor + '; color: white; padding: 4px 10px; border-radius: 15px; font-size: 0.9rem;">' + districtInfo.action + '</span>';
                     popupContent += '</div>';
                     popupContent += '<div><strong>Cook PVI:</strong> ' + districtInfo.pvi + '</div>';
+                    
+                    if (districtInfo.cities) {
+                        popupContent += '<div style="margin-top: 8px;"><strong>Major Cities:</strong><br>' + districtInfo.cities.slice(0, 3).join(', ') + '</div>';
+                    }
                 } else {
                     popupContent += '<div style="color: #666;">Not a tracked swing district</div>';
                 }
                 
-                layer.bindPopup(popupContent);
+                layer.bindPopup(popupContent, { maxWidth: 300 });
+                
+                // Add hover effects
+                layer.on({
+                    mouseover: function(e) {
+                        if (!isSelected) {
+                            layer.setStyle({
+                                weight: 4,
+                                opacity: 0.8
+                            });
+                        }
+                    },
+                    mouseout: function(e) {
+                        if (!isSelected) {
+                            // Reset to original style
+                            const originalStyle = districtStyle(feature);
+                            layer.setStyle(originalStyle);
+                        }
+                    }
+                });
             }
             
             // Add the district boundaries to the map
@@ -1102,7 +1147,7 @@
                 onEachFeature: onEachDistrict
             }).addTo(map);
             
-            console.log('📍 District boundaries added to map');
+            console.log('📍 District boundaries added to map' + (selectedDistrict ? ' with ' + selectedDistrict + ' highlighted' : ''));
         }
         
         function getDistrictId(feature) {

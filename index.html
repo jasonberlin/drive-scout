@@ -430,7 +430,7 @@
             
             <!-- CLOSEST DISTRICTS FEATURE -->
             <div style="background: rgba(255,255,255,0.95); padding: 25px; margin: 30px 0; text-align: center; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.1); backdrop-filter: blur(10px);">
-                <button id="findClosestBtn" onclick="findClosestDistricts()" style="background: #667eea; color: white; padding: 15px 30px; border: none; border-radius: 10px; font-size: 1.1rem; cursor: pointer; font-weight: bold; transition: all 0.3s ease;">
+                <button id="findClosestBtn" onclick="findClosestDistricts()" style="background: #667eea; color: white; padding: 15px 30px; border: none; border-radius: 10px; font-size: 1.1rem; cursor: pointer; font-weight: bold; transition: all 0.3s ease; outline: none;">
                     📍 What swing districts are closest to me?
                 </button>
                 <div id="closestDistricts" style="display: none; margin-top: 20px;"></div>
@@ -728,16 +728,32 @@
                 },
                 function(error) {
                     console.log('❌ Geolocation error:', error.message);
-                    alert('Unable to get your location. Please enable location access.');
+                    
+                    let errorMessage = 'Unable to get your location. ';
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMessage += 'Please enable location access in your browser settings. On iPhone: Settings > Safari > Location Services > Safari Websites > Allow.';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMessage += 'Location information is unavailable. Please check your device\'s location settings.';
+                            break;
+                        case error.TIMEOUT:
+                            errorMessage += 'Location request timed out. Please try again.';
+                            break;
+                        default:
+                            errorMessage += 'An unknown error occurred. Please try again.';
+                    }
+                    
+                    alert(errorMessage);
                     
                     // Reset button
                     btn.innerHTML = '📍 What swing districts are closest to me?';
                     btn.disabled = false;
                 },
                 {
-                    enableHighAccuracy: true,
-                    timeout: 10000,
-                    maximumAge: 300000
+                    enableHighAccuracy: false, // Changed to false for better mobile compatibility
+                    timeout: 15000, // Increased timeout for mobile
+                    maximumAge: 600000 // 10 minutes cache
                 }
             );
         }

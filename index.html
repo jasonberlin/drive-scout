@@ -152,13 +152,39 @@
             transition: all 0.3s ease;
         }
 
+        .district-toggle-button {
+            position: absolute;
+            bottom: 20px;
+            right: 80px;
+            z-index: 1000;
+            background: white;
+            border: 2px solid #333;
+            border-radius: 8px;
+            padding: 12px 16px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: bold;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .district-toggle-button:hover,
+        .district-toggle-button:hover,
         .location-button:hover {
             background: #f0f0f0;
             transform: scale(1.05);
         }
 
+        .district-toggle-button:active,
         .location-button:active {
             transform: scale(0.95);
+        }
+
+        .district-toggle-button.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
         }
 
         .location-button.loading {
@@ -445,6 +471,7 @@
 
         <div class="map-container" id="mapContainer" style="display: none;">
             <div id="map">
+                <button class="district-toggle-button" id="districtToggleBtn" title="Toggle district boundaries">🗺️ Districts</button>
                 <button class="location-button" id="locationBtn" title="Find my location">📍</button>
             </div>
         </div>
@@ -646,6 +673,8 @@
         let collegeData = {};
         let loadedDistricts = new Set();
         let districtBoundaries = null; // Store loaded district boundaries
+        let districtBoundariesVisible = true; // Track visibility state
+        let currentSelectedDistrict = null; // Track currently selected district
 
         function findClosestDistricts() {
             const btn = document.getElementById('findClosestBtn');
@@ -1032,9 +1061,12 @@
         }
 
         function addDistrictBoundariesToMap(selectedDistrict = null) {
-            if (!map || !districtBoundaries) {
+            if (!map || !districtBoundaries || !districtBoundariesVisible) {
                 return;
             }
+            
+            // Store the selected district for toggle functionality
+            currentSelectedDistrict = selectedDistrict;
             
             // Remove existing district boundaries
             if (map.districtLayer) {
@@ -1148,6 +1180,9 @@
             }).addTo(map);
             
             console.log('📍 District boundaries added to map' + (selectedDistrict ? ' with ' + selectedDistrict + ' highlighted' : ''));
+            
+            // Update toggle button state
+            updateDistrictToggleButton();
         }
         
         function getDistrictId(feature) {
@@ -2241,8 +2276,50 @@
 
         function setupLocationButton() {
             const locationBtn = document.getElementById('locationBtn');
+            const districtToggleBtn = document.getElementById('districtToggleBtn');
+            
             if (locationBtn) {
                 locationBtn.addEventListener('click', findUserLocation);
+            }
+            
+            if (districtToggleBtn) {
+                districtToggleBtn.addEventListener('click', toggleDistrictBoundaries);
+                // Set initial state
+                updateDistrictToggleButton();
+            }
+        }
+
+        function toggleDistrictBoundaries() {
+            districtBoundariesVisible = !districtBoundariesVisible;
+            
+            if (districtBoundariesVisible) {
+                // Show boundaries
+                if (districtBoundaries && currentSelectedDistrict) {
+                    addDistrictBoundariesToMap(currentSelectedDistrict);
+                }
+            } else {
+                // Hide boundaries
+                if (map.districtLayer) {
+                    map.removeLayer(map.districtLayer);
+                }
+            }
+            
+            updateDistrictToggleButton();
+            console.log('📍 District boundaries', districtBoundariesVisible ? 'shown' : 'hidden');
+        }
+
+        function updateDistrictToggleButton() {
+            const districtToggleBtn = document.getElementById('districtToggleBtn');
+            if (districtToggleBtn) {
+                if (districtBoundariesVisible) {
+                    districtToggleBtn.classList.add('active');
+                    districtToggleBtn.innerHTML = '🗺️ Districts';
+                    districtToggleBtn.title = 'Hide district boundaries';
+                } else {
+                    districtToggleBtn.classList.remove('active');
+                    districtToggleBtn.innerHTML = '🗺️ Districts';
+                    districtToggleBtn.title = 'Show district boundaries';
+                }
             }
         }
 

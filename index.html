@@ -688,125 +688,83 @@
         function findClosestDistricts() {
             const btn = document.getElementById('findClosestBtn');
             
-            // Show loading state immediately
-            btn.innerHTML = '🔍 Finding closest districts...';
-            btn.disabled = true;
-            
-            // Check if geolocation is available
             if (!navigator.geolocation) {
                 alert('Geolocation is not supported by your browser');
-                btn.innerHTML = '📍 What swing districts are closest to me?';
-                btn.disabled = false;
                 return;
             }
 
-            console.log('🗺️ Geolocation available, checking permissions...');
+            // Show loading state
+            btn.innerHTML = '🔍 Finding closest districts...';
+            btn.disabled = true;
             
-            // Try to check permissions first (if supported)
-            if (navigator.permissions) {
-                navigator.permissions.query({name: 'geolocation'}).then(function(result) {
-                    console.log('🔐 Permission state:', result.state);
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    const userLat = position.coords.latitude;
+                    const userLng = position.coords.longitude;
                     
-                    if (result.state === 'granted') {
-                        console.log('✅ Permission already granted');
-                        getCurrentLocationWithTimeout();
-                    } else if (result.state === 'prompt') {
-                        console.log('❓ Permission will prompt');
-                        getCurrentLocationWithTimeout();
-                    } else {
-                        console.log('❌ Permission denied');
-                        offerZipCodeFallback('Location permission was previously denied.');
+                    console.log('🗺️ User location:', userLat, userLng);
+                    
+                    // Calculate distances to all swing districts
+                    const distances = [];
+                    
+                    for (const [district, data] of Object.entries(districtData)) {
+                        const distance = calculateDistance(userLat, userLng, data.center[0], data.center[1]);
+                        distances.push({
+                            district: district,
+                            distance: distance,
+                            ...data
+                        });
                     }
-                }).catch(function(error) {
-                    console.log('⚠️ Permissions API not supported, trying direct geolocation');
-                    getCurrentLocationWithTimeout();
-                });
-            } else {
-                console.log('⚠️ Permissions API not available, trying direct geolocation');
-                getCurrentLocationWithTimeout();
-            }
-            
-            function getCurrentLocationWithTimeout() {
-                console.log('📍 Requesting current position...');
-                
-                navigator.geolocation.getCurrentPosition(
-                    function(position) {
-                        console.log('✅ Location success!');
-                        const userLat = position.coords.latitude;
-                        const userLng = position.coords.longitude;
-                        
-                        console.log('🗺️ User location:', userLat, userLng);
-                        
-                        // Calculate distances to all swing districts
-                        const distances = [];
-                        
-                        for (const [district, data] of Object.entries(districtData)) {
-                            const distance = calculateDistance(userLat, userLng, data.center[0], data.center[1]);
-                            distances.push({
-                                district: district,
-                                distance: distance,
-                                ...data
-                            });
+                    
+                    // Sort by distance and take top 8
+                    distances.sort((a, b) => a.distance - b.distance);
+                    const closest8 = distances.slice(0, 8);
+                    
+                    displayClosestDistricts(closest8);
+                    
+                    // Reset button
+                    btn.innerHTML = '📍 What swing districts are closest to me?';
+                    btn.disabled = false;
+                },
+                function(error) {
+                    console.log('❌ Geolocation error:', error.message);
+                    
+                    let errorMessage = 'Unable to get your location. ';
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMessage += 'Location access was denied.';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMessage += 'Location information unavailable.';
+                            break;
+                        case error.TIMEOUT:
+                            errorMessage += 'Location request timed out.';
+                            break;
+                        default:
+                            errorMessage += 'An unknown error occurred.';
+                    }
+                    
+                    // Offer ZIP code fallback
+                    const useZipCode = confirm(errorMessage + '\n\nWould you like to enter your ZIP code instead?');
+                    if (useZipCode) {
+                        const zipCode = prompt('Please enter your ZIP code:');
+                        if (zipCode && zipCode.length === 5 && /^\d+$/.test(zipCode)) {
+                            handleZipCodeLookup(zipCode);
+                        } else if (zipCode) {
+                            alert('Please enter a valid 5-digit ZIP code.');
                         }
-                        
-                        // Sort by distance and take top 8
-                        distances.sort((a, b) => a.distance - b.distance);
-                        const closest8 = distances.slice(0, 8);
-                        
-                        displayClosestDistricts(closest8);
-                        
-                        // Reset button
-                        btn.innerHTML = '📍 What swing districts are closest to me?';
-                        btn.disabled = false;
-                    },
-                    function(error) {
-                        console.log('❌ Geolocation error:', error.message);
-                        console.log('❌ Error code:', error.code);
-                        console.log('❌ Full error object:', error);
-                        
-                        let errorMessage = '';
-                        
-                        switch(error.code) {
-                            case 1: // PERMISSION_DENIED
-                                errorMessage = 'Location access was denied. This might be because:\n• You tapped "Don\'t Allow" on a previous visit\n• Safari settings are blocking location access\n• The site permissions need to be reset';
-                                break;
-                            case 2: // POSITION_UNAVAILABLE
-                                errorMessage = 'Your location is currently unavailable. Please check that Location Services is enabled in your iPhone settings.';
-                                break;
-                            case 3: // TIMEOUT
-                                errorMessage = 'Location request timed out. Please check your internet connection.';
-                                break;
-                            default:
-                                errorMessage = 'Unable to get your location (Error code: ' + error.code + ')';
-                        }
-                        
-                        offerZipCodeFallback(errorMessage);
-                    },
-                    {
-                        enableHighAccuracy: false,
-                        timeout: 15000,
-                        maximumAge: 30000
                     }
-                );
-            }
-            
-            function offerZipCodeFallback(errorMessage) {
-                // Reset button first
-                btn.innerHTML = '📍 What swing districts are closest to me?';
-                btn.disabled = false;
-                
-                // Offer manual input as fallback
-                const useManualInput = confirm(errorMessage + '\n\nWould you like to enter your ZIP code instead to find nearby districts?');
-                
-                if (useManualInput) {
-                    const zipCode = prompt('Please enter your ZIP code:');
-                    if (zipCode && zipCode.length === 5 && /^\d+$/.test(zipCode)) {
-                        handleZipCodeLookup(zipCode);
-                    } else if (zipCode) {
-                        alert('Please enter a valid 5-digit ZIP code.');
-                    }
+                    
+                    // Reset button
+                    btn.innerHTML = '📍 What swing districts are closest to me?';
+                    btn.disabled = false;
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 300000
                 }
-            }
+            );
         }
             console.log('🔍 Looking up ZIP code:', zipCode);
             

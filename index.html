@@ -1157,26 +1157,114 @@
                     continue;
                 }
 
-                // Parse college data - simplified version for now
-                const college = {
-                    name: values[0].trim() || '',
-                    district: district,
-                    section: currentSection,
-                    enrollment: 2000,
-                    suitability: "High",
-                    type: "College",
-                    publicPrivate: "Public",
-                    lat: 39.8283 + (Math.random() - 0.5) * 0.1,
-                    lng: -98.5795 + (Math.random() - 0.5) * 0.1
-                };
-
-                if (college.name && college.name.length > 3) {
+                // Parse college data properly
+                const college = await parseCollegeData(values, headers, district, currentSection);
+                if (college && college.name && college.name.length > 3) {
                     colleges[currentSection].push(college);
                 }
             }
 
             console.log('Parsed ' + colleges.within.length + ' colleges within ' + district + ' and ' + colleges.near.length + ' colleges near ' + district);
             return colleges;
+        }
+
+        async function parseCollegeData(values, headers, district, section) {
+            const college = {
+                name: values[0].trim() || '',
+                district: district,
+                section: section,
+                enrollment: 2000,
+                suitability: "High",
+                type: "College",
+                publicPrivate: "Public",
+                address: '',
+                city: '',
+                state: '',
+                zipCode: ''
+            };
+
+            console.log('🏫 Parsing college:', college.name);
+
+            for (let j = 0; j < headers.length; j++) {
+                const header = headers[j];
+                const value = values[j] ? values[j].trim() : '';
+                if (!value) continue;
+
+                const headerLower = header.toLowerCase();
+
+                if (headerLower === 'institution' || headerLower === 'institution name') {
+                    college.name = value;
+                } else if (headerLower === 'institution type' || headerLower === 'type') {
+                    college.type = value;
+                } else if (headerLower === 'address') {
+                    college.address = value;
+                    parseAddressComponents(college, value);
+                } else if (headerLower === 'city') {
+                    college.city = value;
+                } else if (headerLower === 'state') {
+                    college.state = value;
+                } else if (headerLower === 'zip code' || headerLower === 'zipcode' || headerLower === 'zip') {
+                    college.zipCode = value;
+                } else if (headerLower === 'enrollment') {
+                    const enrollmentStr = value.replace(/,/g, '');
+                    const enrollmentMatch = enrollmentStr.match(/(\d+)/);
+                    if (enrollmentMatch) {
+                        college.enrollment = parseInt(enrollmentMatch[1]);
+                    }
+                } else if (headerLower.includes('suitability') || headerLower === 'voter drive suitability') {
+                    if (value.toLowerCase().includes('high') || value.toLowerCase().includes('excellent') || value.toLowerCase().includes('good')) {
+                        college.suitability = 'High';
+                    } else if (value.toLowerCase().includes('medium')) {
+                        college.suitability = 'Medium';
+                    } else if (value.toLowerCase().includes('low')) {
+                        college.suitability = 'Low';
+                    }
+                } else if (headerLower === 'public/private') {
+                    college.publicPrivate = value;
+                }
+            }
+
+            // Add proper coordinates based on district
+            await addCoordinatesForDistrict(college, district);
+            
+            return college;
+        }
+
+        function parseAddressComponents(college, address) {
+            const addressMatch = address.match(/^(.*?),\s*([^,]+),\s*([A-Z]{2})\s+(\d{5})/);
+            if (addressMatch) {
+                college.streetAddress = addressMatch[1];
+                college.addressCity = addressMatch[2];
+                college.state = addressMatch[3];
+                college.zipCode = addressMatch[4];
+            } else {
+                college.streetAddress = address;
+            }
+        }
+
+        async function addCoordinatesForDistrict(college, district) {
+            // Get approximate coordinates based on district
+            const districtInfo = districtData[district];
+            if (districtInfo && districtInfo.center) {
+                // Place colleges near the district center with some randomization
+                const centerLat = districtInfo.center[0];
+                const centerLng = districtInfo.center[1];
+                
+                // Add random offset within ~20 miles of district center
+                const latOffset = (Math.random() - 0.5) * 0.5; // ~25 miles
+                const lngOffset = (Math.random() - 0.5) * 0.5; // ~25 miles
+                
+                college.lat = centerLat + latOffset;
+                college.lng = centerLng + lngOffset;
+                college.geocodingSource = 'District-based coordinates';
+                
+                console.log('📍 Placed ' + college.name + ' at: ' + college.lat + ', ' + college.lng + ' (near ' + district + ')');
+            } else {
+                // Fallback to US center
+                college.lat = 39.8283 + (Math.random() - 0.5) * 0.1;
+                college.lng = -98.5795 + (Math.random() - 0.5) * 0.1;
+                college.geocodingSource = 'Fallback coordinates';
+            }
         }
 
         function parseCSVLine(line) {
@@ -1238,12 +1326,122 @@
                     maxZoom: 18
                 }).addTo(map);
 
+                // Set up location button functionality
+                setupLocationButton();
+
                 setTimeout(function() {
                     if (map) {
                         map.invalidateSize();
                     }
                 }, 100);
             }, 50);
+        }
+
+        function setupLocationButton() {
+            const locationBtn = document.getElementById('locationBtn');
+            const districtToggleBtn = document.getElementById('districtToggleBtn');
+            
+            if (locationBtn) {
+                locationBtn.addEventListener('click', findUserLocation);
+            }
+            
+            if (districtToggleBtn) {
+                districtToggleBtn.addEventListener('click', toggleDistrictBoundaries);
+            }
+        }
+
+        function findUserLocation() {
+            const locationBtn = document.getElementById('locationBtn');
+            
+            if (!navigator.geolocation) {
+                alert('Geolocation is not supported by your browser');
+                return;
+            }
+
+            // Show loading state with spinning custom icon
+            locationBtn.classList.add('loading');
+            locationBtn.innerHTML = '<img src="images/icons8-my-location-50.png" style="width: 28px; height: 28px; animation: spin 1s linear infinite;" alt="Finding location">';
+            
+            console.log('🗺️ Requesting user location...');
+
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    const accuracy = position.coords.accuracy;
+
+                    console.log('✅ User location found:', lat, lng, 'accuracy:', accuracy + 'm');
+
+                    // Remove previous user location marker
+                    if (userLocationMarker) {
+                        map.removeLayer(userLocationMarker);
+                    }
+
+                    // Create user location marker with accuracy circle
+                    const locationIcon = L.divIcon({
+                        className: 'user-location-marker',
+                        html: '<div style="background: #4285f4; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>',
+                        iconSize: [16, 16],
+                        iconAnchor: [8, 8]
+                    });
+
+                    userLocationMarker = L.marker([lat, lng], { icon: locationIcon }).addTo(map);
+                    
+                    // Add accuracy circle
+                    const accuracyCircle = L.circle([lat, lng], {
+                        radius: accuracy,
+                        color: '#4285f4',
+                        fillColor: '#4285f4',
+                        fillOpacity: 0.1,
+                        weight: 1
+                    }).addTo(map);
+
+                    // Zoom to user location
+                    map.setView([lat, lng], 12);
+
+                    // Add popup
+                    userLocationMarker.bindPopup('<div style="text-align: center;"><strong>📍 Your Location</strong><br>Accuracy: ±' + Math.round(accuracy) + ' meters</div>');
+
+                    // Reset button with custom icon
+                    locationBtn.classList.remove('loading');
+                    locationBtn.innerHTML = '<img src="images/icons8-my-location-50.png" style="width: 28px; height: 28px;" alt="Find location">';
+
+                    console.log('🎯 User location displayed on map');
+                },
+                function(error) {
+                    console.log('❌ Geolocation error:', error.message);
+                    
+                    let errorMessage = 'Unable to get your location. ';
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMessage += 'Permission denied. Please enable location access.';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMessage += 'Location information unavailable.';
+                            break;
+                        case error.TIMEOUT:
+                            errorMessage += 'Location request timed out.';
+                            break;
+                        default:
+                            errorMessage += 'An unknown error occurred.';
+                    }
+                    
+                    alert(errorMessage);
+                    
+                    // Reset button with custom icon
+                    locationBtn.classList.remove('loading');
+                    locationBtn.innerHTML = '<img src="images/icons8-my-location-50.png" style="width: 28px; height: 28px;" alt="Find location">';
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 300000 // 5 minutes
+                }
+            );
+        }
+
+        function toggleDistrictBoundaries() {
+            console.log('📍 District boundaries toggle clicked (placeholder - boundaries not implemented yet)');
         }
 
         function addMarkersToMap(colleges) {
@@ -1341,8 +1539,16 @@
             const div = document.createElement('div');
             div.className = 'college-item';
             
+            const addressDisplay = college.streetAddress ? 
+                college.streetAddress + '<br>' + (college.city || college.addressCity || '') + ', ' + (college.state || '') + ' ' + (college.zipCode || '') :
+                (college.address || 'Address not available');
+            
             div.innerHTML = '<div class="college-name">' + college.name + '</div>' +
                 '<div class="college-details">' +
+                    '<div class="detail-item">' +
+                        '<div class="detail-label">Address</div>' +
+                        '<div class="detail-value">' + addressDisplay + '</div>' +
+                    '</div>' +
                     '<div class="detail-item">' +
                         '<div class="detail-label">Type</div>' +
                         '<div class="detail-value">' + college.type + ' (' + college.publicPrivate + ')</div>' +
@@ -1357,9 +1563,28 @@
                             '<span class="suitability-badge suitability-' + college.suitability.toLowerCase() + '">' + college.suitability + '</span>' +
                         '</div>' +
                     '</div>' +
+                '</div>' +
+                '<div class="college-actions">' +
+                    '<a href="https://www.google.com/maps/search/' + encodeURIComponent((college.streetAddress || college.address || college.name) + ', ' + (college.city || college.addressCity || '') + ', ' + (college.state || '')) + '" target="_blank" class="btn btn-primary">🗺️ Get Directions</a>' +
+                    (college.website ? '<a href="https://' + college.website + '" target="_blank" class="btn btn-secondary">🌐 Visit Website</a>' : '') +
+                    '<button class="btn btn-secondary" onclick="focusOnCollege(' + college.lat + ', ' + college.lng + ')">📍 Show on Map</button>' +
                 '</div>';
 
             return div;
+        }
+
+        function focusOnCollege(lat, lng) {
+            if (map && lat && lng) {
+                console.log('Focusing on college at: ' + lat + ', ' + lng);
+                map.setView([lat, lng], 16);
+                
+                markers.forEach(function(marker) {
+                    const markerLatLng = marker.getLatLng();
+                    if (Math.abs(markerLatLng.lat - lat) < 0.0001 && Math.abs(markerLatLng.lng - lng) < 0.0001) {
+                        marker.openPopup();
+                    }
+                });
+            }
         }
 
         function showNoData(state, district) {

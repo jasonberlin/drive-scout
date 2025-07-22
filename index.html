@@ -1023,7 +1023,28 @@
                 'Colorado': 'data/boundaries/colorado_districts_119th.json',
                 'Connecticut': 'data/boundaries/connecticut_districts_119th.json',
                 'Florida': 'data/boundaries/florida_districts_119th.json',
-                'Nevada': 'data/boundaries/nevada_districts_119th.json'
+                'Illinois': 'data/boundaries/illinois_districts_119th.json',
+                'Indiana': 'data/boundaries/indiana_districts_119th.json',
+                'Iowa': 'data/boundaries/iowa_districts_119th.json',
+                'Maine': 'data/boundaries/maine_districts_119th.json',
+                'Maryland': 'data/boundaries/maryland_districts_119th.json',
+                'Michigan': 'data/boundaries/michigan_districts_119th.json',
+                'Minnesota': 'data/boundaries/minnesota_districts_119th.json',
+                'Montana': 'data/boundaries/montana_districts_119th.json',
+                'Nebraska': 'data/boundaries/nebraska_districts_119th.json',
+                'Nevada': 'data/boundaries/nevada_districts_119th.json',
+                'New Hampshire': 'data/boundaries/newhampshire_districts_119th.json',
+                'New Jersey': 'data/boundaries/newjersey_districts_119th.json',
+                'New Mexico': 'data/boundaries/newmexico_districts_119th.json',
+                'New York': 'data/boundaries/newyork_districts_119th.json',
+                'North Carolina': 'data/boundaries/northcarolina_districts_119th.json',
+                'Ohio': 'data/boundaries/ohio_districts_119th.json',
+                'Oregon': 'data/boundaries/oregon_districts_119th.json',
+                'Pennsylvania': 'data/boundaries/pennsylvania_districts_119th.json',
+                'Texas': 'data/boundaries/texas_districts_119th.json',
+                'Virginia': 'data/boundaries/virginia_districts_119th.json',
+                'Washington': 'data/boundaries/washington_districts_119th.json',
+                'Wisconsin': 'data/boundaries/wisconsin_districts_119th.json'
             };
             
             const boundaryFile = boundaryFiles[state];
@@ -1150,7 +1171,7 @@
                         popupContent += '<div style="margin-top: 8px;"><strong>Major Cities:</strong><br>' + districtInfo.cities.slice(0, 3).join(', ') + '</div>';
                     }
                 } else {
-                    popupContent += '<div style="color: #666;">Not a tracked swing district</div>';
+                    popupContent += '<div style="color: #666;">Not a swing district</div>';
                 }
                 
                 layer.bindPopup(popupContent, { maxWidth: 300 });
@@ -1219,7 +1240,12 @@
         function getStateAbbrev(fipsCode) {
             const fipsToState = {
                 '02': 'AK', '04': 'AZ', '06': 'CA', '08': 'CO', 
-                '09': 'CT', '12': 'FL', '32': 'NV'
+                '09': 'CT', '12': 'FL', '17': 'IL', '18': 'IN',
+                '19': 'IA', '23': 'ME', '24': 'MD', '26': 'MI',
+                '27': 'MN', '30': 'MT', '31': 'NE', '32': 'NV',
+                '33': 'NH', '34': 'NJ', '35': 'NM', '36': 'NY',
+                '37': 'NC', '39': 'OH', '41': 'OR', '42': 'PA',
+                '48': 'TX', '51': 'VA', '53': 'WA', '55': 'WI'
             };
             return fipsToState[fipsCode] || 'XX';
         }

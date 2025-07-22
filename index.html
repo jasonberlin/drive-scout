@@ -1221,13 +1221,9 @@
                         college.enrollment = parseInt(enrollmentMatch[1]);
                     }
                 } else if (headerLower.includes('suitability') || headerLower === 'voter drive suitability') {
-                    if (value.toLowerCase().includes('high') || value.toLowerCase().includes('excellent') || value.toLowerCase().includes('good')) {
-                        college.suitability = 'High';
-                    } else if (value.toLowerCase().includes('medium')) {
-                        college.suitability = 'Medium';
-                    } else if (value.toLowerCase().includes('low')) {
-                        college.suitability = 'Low';
-                    }
+                    // Always calculate suitability automatically - don't use CSV values
+                    // We'll calculate this after parsing is complete
+                    console.log('📋 Found suitability column, but will calculate automatically');
                 } else if (headerLower === 'public/private') {
                     college.publicPrivate = value;
                 } else if (headerLower === 'contact phone' || headerLower === 'phone' || headerLower === 'founded') {
@@ -2049,8 +2045,323 @@
             );
         }
 
+        async function displayColleges(state, district) {
+            document.getElementById('collegeItems').innerHTML = '<div class="loading-modern"><div class="loading-spinner"></div><h3>Loading ' + district + ' college data...</h3><p>Please wait while we fetch the latest information.</p></div>';
+            document.getElementById('collegeList').style.display = 'block';
+
+            await loadDistrictData(district);
+            
+            const collegeDataForDistrict = collegeData[state] && collegeData[state][district] ? collegeData[state][district] : [];
+            
+            let allColleges = [];
+            let withinColleges = [];
+            let nearColleges = [];
+
+            if (Array.isArray(collegeDataForDistrict)) {
+                allColleges = collegeDataForDistrict;
+                withinColleges = collegeDataForDistrict;
+            } else if (collegeDataForDistrict.within || collegeDataForDistrict.near) {
+                withinColleges = collegeDataForDistrict.within || [];
+                nearColleges = collegeDataForDistrict.near || [];
+                allColleges = withinColleges.concat(nearColleges);
+            }
+            
+            if (allColleges.length === 0) {
+                showNoData(state, district);
+            } else {
+                updateStats(allColleges);
+                
+                document.getElementById('stats').style.display = 'grid';
+                document.getElementById('mapContainer').style.display = 'block';
+                document.getElementById('collegeList').style.display = 'block';
+                
+                initializeMap();
+                
+                // Load district boundaries for the selected state
+                await loadDistrictBoundaries(state);
+                
+                setTimeout(function() {
+                    addMarkersToMap(allColleges);
+                    // Highlight the selected district on the boundaries
+                    addDistrictBoundariesToMap(district);
+                }, 200);
+                
+                displayCollegeListWithSections(district, withinColleges, nearColleges);
+            }
+        }
+
+        async function loadDistrictBoundaries(state) {
+            // Mapping of states to their boundary file names
+            const boundaryFiles = {
+                'Arizona': 'data/boundaries/arizona_districts_119th.json',
+                'California': 'data/boundaries/california_districts_119th.json',
+                'Colorado': 'data/boundaries/colorado_districts_119th.json',
+                'Connecticut': 'data/boundaries/connecticut_districts_119th.json',
+                'Florida': 'data/boundaries/florida_districts_119th.json',
+                'Illinois': 'data/boundaries/illinois_districts_119th.json',
+                'Indiana': 'data/boundaries/indiana_districts_119th.json',
+                'Iowa': 'data/boundaries/iowa_districts_119th.json',
+                'Maine': 'data/boundaries/maine_districts_119th.json',
+                'Maryland': 'data/boundaries/maryland_districts_119th.json',
+                'Michigan': 'data/boundaries/michigan_districts_119th.json',
+                'Minnesota': 'data/boundaries/minnesota_districts_119th.json',
+                'Montana': 'data/boundaries/montana_districts_119th.json',
+                'Nebraska': 'data/boundaries/nebraska_districts_119th.json',
+                'Nevada': 'data/boundaries/nevada_districts_119th.json',
+                'New Hampshire': 'data/boundaries/newhampshire_districts_119th.json',
+                'New Jersey': 'data/boundaries/newjersey_districts_119th.json',
+                'New Mexico': 'data/boundaries/newmexico_districts_119th.json',
+                'New York': 'data/boundaries/newyork_districts_119th.json',
+                'North Carolina': 'data/boundaries/northcarolina_districts_119th.json',
+                'Ohio': 'data/boundaries/ohio_districts_119th.json',
+                'Oregon': 'data/boundaries/oregon_districts_119th.json',
+                'Pennsylvania': 'data/boundaries/pennsylvania_districts_119th.json',
+                'Texas': 'data/boundaries/texas_districts_119th.json',
+                'Virginia': 'data/boundaries/virginia_districts_119th.json',
+                'Washington': 'data/boundaries/washington_districts_119th.json',
+                'Wisconsin': 'data/boundaries/wisconsin_districts_119th.json'
+            };
+            
+            const boundaryFile = boundaryFiles[state];
+            if (!boundaryFile) {
+                console.log('📍 No boundary file configured for state:', state);
+                return;
+            }
+            
+            // Check if we already loaded this state's boundaries
+            if (districtBoundaries && districtBoundaries.state === state) {
+                console.log('📍 District boundaries already loaded for', state);
+                return; // Don't call addDistrictBoundariesToMap here - it will be called later
+            }
+            
+            try {
+                console.log('📍 Loading district boundaries for', state, 'from', boundaryFile);
+                const response = await fetch(boundaryFile);
+                
+                if (!response.ok) {
+                    console.log('📍 Could not load boundary file:', boundaryFile, '- Status:', response.status);
+                    console.log('📍 Make sure the file exists at:', window.location.origin + '/' + boundaryFile);
+                    return;
+                }
+                
+                const geojsonData = await response.json();
+                
+                if (!geojsonData || !geojsonData.features) {
+                    console.log('📍 Invalid GeoJSON data loaded from', boundaryFile);
+                    return;
+                }
+                
+                districtBoundaries = {
+                    state: state,
+                    data: geojsonData
+                };
+                
+                console.log('📍 Successfully loaded', geojsonData.features.length, 'district boundaries for', state);
+                console.log('📍 Sample feature:', geojsonData.features[0]?.properties);
+                // Don't add to map here - it will be called later with the selected district
+                
+            } catch (error) {
+                console.log('📍 Error loading district boundaries:', error.message);
+                console.log('📍 Full error:', error);
+            }
+        }
+
+        function addDistrictBoundariesToMap(selectedDistrict = null) {
+            if (!map || !districtBoundaries || !districtBoundariesVisible) {
+                return;
+            }
+            
+            // Store the selected district for toggle functionality
+            currentSelectedDistrict = selectedDistrict;
+            
+            // ALWAYS remove existing district boundaries to ensure clean refresh
+            if (map.districtLayer) {
+                map.removeLayer(map.districtLayer);
+                map.districtLayer = null;
+            }
+            
+            // Style function for district boundaries
+            function districtStyle(feature) {
+                const districtId = getDistrictId(feature);
+                const districtInfo = districtData[districtId];
+                const isSelected = selectedDistrict && districtId === selectedDistrict;
+                
+                // Default styling
+                let color = '#666666';
+                let fillColor = 'transparent';
+                let weight = 2;
+                let opacity = 0.3; // Reduced opacity for non-selected districts
+                let fillOpacity = 0;
+                
+                // Color code based on party and action if this is a swing district
+                if (districtInfo) {
+                    if (districtInfo.action === 'FLIP') {
+                        color = '#FF6B35'; // Orange for flip districts
+                        weight = 3;
+                    } else if (districtInfo.action === 'HOLD') {
+                        color = districtInfo.party === 'D' ? '#4169E1' : '#DC143C'; // Blue for Dem, Red for Rep
+                        weight = 3;
+                    }
+                    opacity = 0.6; // Higher opacity for swing districts
+                }
+                
+                // HIGHLIGHT SELECTED DISTRICT
+                if (isSelected) {
+                    weight = 5; // Thicker border
+                    opacity = 1.0; // Full opacity
+                    fillOpacity = 0.15; // Light fill to highlight the area
+                    fillColor = color; // Fill with the same color as border
+                }
+                
+                return {
+                    color: color,
+                    weight: weight,
+                    opacity: opacity,
+                    fillColor: fillColor,
+                    fillOpacity: fillOpacity,
+                    dashArray: isSelected ? '' : '',
+                    className: isSelected ? 'selected-district' : ''
+                };
+            }
+            
+            // Create popup content for districts
+            function onEachDistrict(feature, layer) {
+                const districtId = getDistrictId(feature);
+                const districtInfo = districtData[districtId];
+                const isSelected = selectedDistrict && districtId === selectedDistrict;
+                
+                let popupContent = '<div style="font-weight: bold; margin-bottom: 8px; font-size: 1.1rem;">' + districtId;
+                if (isSelected) {
+                    popupContent += ' <span style="background: #4CAF50; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem;">SELECTED</span>';
+                }
+                popupContent += '</div>';
+                
+                if (districtInfo) {
+                    const partyColor = districtInfo.party === 'D' ? '#4169E1' : '#DC143C';
+                    const actionColor = districtInfo.action === 'FLIP' ? '#FF6B35' : '#4CAF50';
+                    
+                    popupContent += '<div style="margin-bottom: 4px;"><strong>Representative:</strong> ' + districtInfo.rep + '</div>';
+                    popupContent += '<div style="margin-bottom: 8px;">';
+                    popupContent += '<span style="background: ' + partyColor + '; color: white; padding: 3px 8px; border-radius: 15px; font-size: 0.8rem; margin-right: 5px;">' + districtInfo.party + '</span>';
+                    popupContent += '<span style="background: ' + actionColor + '; color: white; padding: 4px 10px; border-radius: 15px; font-size: 0.9rem;">' + districtInfo.action + '</span>';
+                    popupContent += '</div>';
+                    popupContent += '<div><strong>Cook PVI:</strong> ' + districtInfo.pvi + '</div>';
+                    
+                    if (districtInfo.cities) {
+                        popupContent += '<div style="margin-top: 8px;"><strong>Major Cities:</strong><br>' + districtInfo.cities.slice(0, 3).join(', ') + '</div>';
+                    }
+                } else {
+                    popupContent += '<div style="color: #666;">Not a swing district</div>';
+                }
+                
+                layer.bindPopup(popupContent, { maxWidth: 300 });
+                
+                // Add hover effects
+                layer.on({
+                    mouseover: function(e) {
+                        if (!isSelected) {
+                            layer.setStyle({
+                                weight: 4,
+                                opacity: 0.8
+                            });
+                        }
+                    },
+                    mouseout: function(e) {
+                        if (!isSelected) {
+                            // Reset to original style
+                            const originalStyle = districtStyle(feature);
+                            layer.setStyle(originalStyle);
+                        }
+                    }
+                });
+            }
+            
+            // Add the district boundaries to the map
+            map.districtLayer = L.geoJSON(districtBoundaries.data, {
+                style: districtStyle,
+                onEachFeature: onEachDistrict
+            }).addTo(map);
+            
+            console.log('📍 District boundaries added to map' + (selectedDistrict ? ' with ' + selectedDistrict + ' highlighted' : ''));
+            
+            // Update toggle button state
+            updateDistrictToggleButton();
+        }
+        
+        function getDistrictId(feature) {
+            // Extract district ID from the GeoJSON feature properties
+            // Census Bureau files typically use different field names
+            const props = feature.properties;
+            
+            // Try common field names used by Census Bureau
+            if (props.GEOID) {
+                // GEOID format is typically SSFP where SS = state FIPS, FP = district number
+                const stateCode = props.GEOID.substring(0, 2);
+                const districtNum = props.GEOID.substring(2);
+                return getStateAbbrev(stateCode) + '-' + districtNum.padStart(2, '0');
+            }
+            
+            if (props.CD119FP && props.STATEFP) {
+                return getStateAbbrev(props.STATEFP) + '-' + props.CD119FP.padStart(2, '0');
+            }
+            
+            // Fallback - try to extract from name fields
+            if (props.NAMELSAD) {
+                // Example: "Congressional District 1"
+                const match = props.NAMELSAD.match(/(\d+)/);
+                if (match) {
+                    return getStateAbbrev(props.STATEFP || '04') + '-' + match[1].padStart(2, '0');
+                }
+            }
+            
+            return 'UNKNOWN';
+        }
+        
+        function getStateAbbrev(fipsCode) {
+            const fipsToState = {
+                '02': 'AK', '04': 'AZ', '06': 'CA', '08': 'CO', 
+                '09': 'CT', '12': 'FL', '17': 'IL', '18': 'IN',
+                '19': 'IA', '23': 'ME', '24': 'MD', '26': 'MI',
+                '27': 'MN', '30': 'MT', '31': 'NE', '32': 'NV',
+                '33': 'NH', '34': 'NJ', '35': 'NM', '36': 'NY',
+                '37': 'NC', '39': 'OH', '41': 'OR', '42': 'PA',
+                '48': 'TX', '51': 'VA', '53': 'WA', '55': 'WI'
+            };
+            return fipsToState[fipsCode] || 'XX';
+        }
+
         function toggleDistrictBoundaries() {
-            console.log('📍 District boundaries toggle clicked (placeholder - boundaries not implemented yet)');
+            districtBoundariesVisible = !districtBoundariesVisible;
+            
+            if (districtBoundariesVisible) {
+                // Show boundaries
+                if (districtBoundaries && currentSelectedDistrict) {
+                    addDistrictBoundariesToMap(currentSelectedDistrict);
+                }
+            } else {
+                // Hide boundaries
+                if (map.districtLayer) {
+                    map.removeLayer(map.districtLayer);
+                }
+            }
+            
+            updateDistrictToggleButton();
+            console.log('📍 District boundaries', districtBoundariesVisible ? 'shown' : 'hidden');
+        }
+
+        function updateDistrictToggleButton() {
+            const districtToggleBtn = document.getElementById('districtToggleBtn');
+            if (districtToggleBtn) {
+                if (districtBoundariesVisible) {
+                    districtToggleBtn.classList.add('active');
+                    districtToggleBtn.innerHTML = '🗺️ Districts';
+                    districtToggleBtn.title = 'Hide district boundaries';
+                } else {
+                    districtToggleBtn.classList.remove('active');
+                    districtToggleBtn.innerHTML = '🗺️ Districts';
+                    districtToggleBtn.title = 'Show district boundaries';
+                }
+            }
         }
 
         function addMarkersToMap(colleges) {

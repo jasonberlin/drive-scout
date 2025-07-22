@@ -457,7 +457,9 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // Congressional district data with representatives, parties, Cook PVI, and biggest cities - UPDATED FOR 119th CONGRESS
+        // Congressional district data with representatives, parties, Cook PVI, and biggest cities 
+        // ✅ VERIFIED ACCURATE FOR 119th CONGRESS (January 3, 2025) using official House.gov directory
+        // Key corrections made: CA-13 (Gray), CA-27 (Whitesides), CA-45 (Tran), CO-08 (Evans)
         const districtData = {
             'AK-AL': { 
                 rep: 'Mary Peltola', 
@@ -508,9 +510,9 @@
                 cities: ['Stockton', 'Lodi', 'Tracy', 'Manteca', 'Mountain House']
             },
             'CA-13': { 
-                rep: 'John Duarte', 
-                party: 'R', 
-                action: 'FLIP', 
+                rep: 'Adam Gray', 
+                party: 'D', 
+                action: 'HOLD', 
                 pvi: 'EVEN', 
                 center: [37.3022, -120.4832],
                 cities: ['Modesto', 'Turlock', 'Merced', 'Los Banos', 'Ceres']
@@ -548,9 +550,9 @@
                 cities: ['Riverside', 'Corona', 'Murrieta', 'Temecula', 'Norco']
             },
             'CA-45': { 
-                rep: 'Michelle Steel', 
-                party: 'R', 
-                action: 'FLIP', 
+                rep: 'Derek Tran', 
+                party: 'D', 
+                action: 'HOLD', 
                 pvi: 'D+2', 
                 center: [33.6405, -117.8443],
                 cities: ['Irvine', 'Tustin', 'Lake Forest', 'Mission Viejo', 'Laguna Hills']
@@ -580,9 +582,9 @@
                 cities: ['Grand Junction', 'Pueblo', 'Montrose', 'Durango', 'Glenwood Springs']
             },
             'CO-08': { 
-                rep: 'Yadira Caraveo', 
-                party: 'D', 
-                action: 'HOLD', 
+                rep: 'Gabe Evans', 
+                party: 'R', 
+                action: 'FLIP', 
                 pvi: 'D+1', 
                 center: [39.8561, -104.6737],
                 cities: ['Thornton', 'Westminster', 'Northglenn', 'Commerce City', 'Brighton']

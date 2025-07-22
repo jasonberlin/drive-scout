@@ -817,6 +817,11 @@
             'UC Riverside': [33.97350351814895, -117.32982172444999], // Manual override coordinates
             'University of California Riverside': [33.97350351814895, -117.32982172444999], // Alternative name
             'Mt. San Jacinto College - San Jacinto Campus': [33.806990713859385, -116.97132456626241], // Manual override coordinates
+            
+            // CA-45 colleges
+            'Coastline College - Westminster Campus': [33.75725775515292, -117.98479549944804], // Manual override coordinates
+            'Chapman University': [33.79281969747484, -117.85425622884149], // Manual override coordinates
+            'Saddleback College': [33.554461451895634, -117.66402935613554], // Manual override coordinates
         };
 
         // State and city coordinates for fallbacks
@@ -1097,6 +1102,71 @@
             return colleges;
         }
 
+        function isChristianSchool(name) {
+            const nameUpper = name.toUpperCase();
+            
+            // List of Christian/religious indicators to filter out
+            const christianIndicators = [
+                'CONCORDIA',
+                'SEMINARY',
+                'BIBLICAL',
+                'BIBLE',
+                'CHRISTIAN',
+                'LUTHERAN',
+                'BAPTIST',
+                'METHODIST',
+                'PRESBYTERIAN',
+                'PENTECOSTAL',
+                'EVANGELICAL',
+                'CATHOLIC',
+                'JESUIT',
+                'FRANCISCAN',
+                'DOMINICAN',
+                'BENEDICTINE',
+                'ADVENTIST',
+                'MENNONITE',
+                'DIVINITY',
+                'THEOLOGY',
+                'CHURCH OF',
+                'RELIGIOUS',
+                'FAITH',
+                'GOSPEL',
+                'HOLY',
+                'SACRED',
+                'SAINT',
+                'ST.',
+                'TRINITY',
+                'GRACE',
+                'COVENANT',
+                'CHRIST',
+                'JESUS',
+                'NAZARENE',
+                'EPISCOPAL',
+                'ASSEMBLY OF GOD'
+            ];
+            
+            // List of non-campus facilities to filter out
+            const servicesCenterIndicators = [
+                'SERVICES CENTER',
+                'SERVICE CENTER',
+                'STUDENT SERVICES',
+                'ADMINISTRATIVE CENTER',
+                'ADMIN CENTER',
+                'DISTRICT OFFICE',
+                'ENROLLMENT CENTER',
+                'TESTING CENTER',
+                'CAREER CENTER'
+            ];
+            
+            // Check if the college name contains any Christian/religious indicators
+            const isReligious = christianIndicators.some(indicator => nameUpper.includes(indicator));
+            
+            // Check if the college name contains any services center indicators
+            const isServicesCenter = servicesCenterIndicators.some(indicator => nameUpper.includes(indicator));
+            
+            return isReligious || isServicesCenter;
+        }
+
         async function parseCollegeData(values, headers, district, section) {
             const college = {
                 name: values[0].trim() || '',
@@ -1110,6 +1180,12 @@
             };
 
             console.log('🏫 Parsing college:', college.name);
+
+            // Filter out Christian/religious institutions
+            if (isChristianSchool(college.name)) {
+                console.log('❌ Filtering out Christian school:', college.name);
+                return null;
+            }
 
             for (let j = 0; j < headers.length; j++) {
                 const header = headers[j];

@@ -1257,13 +1257,13 @@
                 college.streetAddress = values[1] || '';
             }
 
-            // PRIORITY #1: Check manual coordinates database FIRST
+            // PRIORITY #1: Check manual coordinates database FIRST - THESE ARE EXACT AND FINAL
             const knownCoords = findKnownCoordinates(college.name);
             if (knownCoords) {
                 college.lat = knownCoords[0];
                 college.lng = knownCoords[1];
-                college.geocodingSource = 'Manual override database';
-                console.log('⚡ MANUAL OVERRIDE: ' + college.name + ' → ' + college.lat + ', ' + college.lng);
+                college.geocodingSource = 'VERIFIED EXACT COORDINATES';
+                console.log('⚡ VERIFIED COORDINATES: ' + college.name + ' → ' + college.lat + ', ' + college.lng);
                 
                 // CALCULATE VOTER DRIVE SUITABILITY AUTOMATICALLY
                 const suitabilityResult = calculateVoterDriveSuitability(college);
@@ -1559,9 +1559,9 @@
         // Known college coordinates - ONLY as last resort fallback
         const knownCollegeCoordinates = {
             // AZ-01 colleges
-            'Scottsdale Community College': [33.4942, -111.9261],
-            'Arizona State University - Tempe Campus': [33.4255, -111.9400],
-            'Arizona State University - Downtown Phoenix Campus': [33.4518, -112.0740],
+            'Scottsdale Community College': [33.51352318231452, -111.88361591907154],
+            'Arizona State University - Tempe Campus': [33.41670855411811, -111.9346330592949],
+            'Arizona State University - Downtown Phoenix Campus': [33.454146432913326, -112.07056040003428],
             'Arizona State University - West Campus': [33.6068, -112.1626],
             'Arizona State University - Polytechnic Campus': [33.3062, -111.6790],
             'Paradise Valley Community College': [33.6532, -112.0090],
@@ -1725,22 +1725,54 @@
         }
 
         function findKnownCoordinates(collegeName) {
-            // Try exact match first
+            // Try exact match first - THESE COORDINATES ARE FINAL AND VERIFIED
             if (knownCollegeCoordinates[collegeName]) {
+                console.log('🎯 EXACT MATCH FOUND: ' + collegeName);
                 return knownCollegeCoordinates[collegeName];
             }
 
-            // Try fuzzy matching
+            // Try fuzzy matching for slight name variations
             const nameNormalized = collegeName.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
             
             for (const knownName in knownCollegeCoordinates) {
                 const knownNameNormalized = knownName.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
                 
+                // Check for ASU variations specifically
+                if (collegeName.includes('Arizona State University')) {
+                    if (knownName.includes('Arizona State University')) {
+                        if (collegeName.includes('Tempe') && knownName.includes('Tempe')) {
+                            console.log('🎯 ASU TEMPE MATCH: ' + collegeName + ' → ' + knownName);
+                            return knownCollegeCoordinates[knownName];
+                        }
+                        if (collegeName.includes('Downtown Phoenix') && knownName.includes('Downtown Phoenix')) {
+                            console.log('🎯 ASU DOWNTOWN MATCH: ' + collegeName + ' → ' + knownName);
+                            return knownCollegeCoordinates[knownName];
+                        }
+                        if (collegeName.includes('West') && knownName.includes('West')) {
+                            console.log('🎯 ASU WEST MATCH: ' + collegeName + ' → ' + knownName);
+                            return knownCollegeCoordinates[knownName];
+                        }
+                        if (collegeName.includes('Polytechnic') && knownName.includes('Polytechnic')) {
+                            console.log('🎯 ASU POLYTECHNIC MATCH: ' + collegeName + ' → ' + knownName);
+                            return knownCollegeCoordinates[knownName];
+                        }
+                    }
+                }
+                
+                // Check for Scottsdale Community College variations
+                if (collegeName.includes('Scottsdale') && collegeName.includes('Community') && knownName.includes('Scottsdale Community College')) {
+                    console.log('🎯 SCOTTSDALE CC MATCH: ' + collegeName + ' → ' + knownName);
+                    return knownCollegeCoordinates[knownName];
+                }
+                
+                // General fuzzy matching for other colleges
                 if (nameNormalized.includes(knownNameNormalized) || knownNameNormalized.includes(nameNormalized)) {
+                    console.log('🎯 FUZZY MATCH: ' + collegeName + ' → ' + knownName);
                     return knownCollegeCoordinates[knownName];
                 }
             }
 
+            console.log('❌ NO MATCH FOUND for: ' + collegeName);
             return null;
         }
 

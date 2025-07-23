@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" style="background: #5f6360;">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,23 +13,29 @@
     <link rel="icon" type="image/png" sizes="512x512" href="/android-chrome-512x512.png">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        /* Force background color - overriding any external CSS */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
 
-        html, body {
-            background: #5f6360 !important;
-            background-color: #5f6360 !important;
-            min-height: 100vh !important;
+        function hideClosestDistricts() {
+            const container = document.getElementById('closestDistricts');
+            container.style.display = 'none';
+            container.innerHTML = '';
+            
+            // Clear the stored distances
+            window.allDistrictDistances = null;
+            
+            console.log('🙈 Districts hidden');
         }
 
         body {
             font-family: 'raleway-v2', 'Raleway', sans-serif;
             font-style: normal;
             font-weight: 400;
+            background: #5f6360;
+            min-height: 100vh;
             margin: 0;
             padding: 0;
         }
@@ -38,7 +44,6 @@
             max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
-            background: transparent;
         }
 
         .header {
@@ -436,16 +441,9 @@
             
             <!-- CLOSEST DISTRICTS FEATURE -->
             <div style="background: transparent; padding: 25px; margin: 30px 0; text-align: center; border-radius: 15px;">
-                <div style="margin-bottom: 15px;">
-                    <button id="findClosestBtn" onclick="findClosestDistricts()" style="background: #667eea; color: white; padding: 15px 30px; border: none; border-radius: 10px; font-size: 1.1rem; cursor: pointer; font-weight: bold; transition: all 0.3s ease; outline: none; margin: 0 10px 10px 10px; display: inline-block;">
-                        📍 What swing districts are closest to me?
-                    </button>
-                </div>
-                <div>
-                    <a href="https://www.mobilize.us/ft6/?per_page=25&show_all_events=true&tag_ids=20036" target="_blank" style="background: #28a745; color: white; padding: 15px 30px; border: none; border-radius: 10px; font-size: 1.1rem; cursor: pointer; font-weight: bold; transition: all 0.3s ease; outline: none; text-decoration: none; display: inline-block; margin: 0 10px;">
-                        🗳️ See all upcoming Field Team 6 voter drives
-                    </a>
-                </div>
+                <button id="findClosestBtn" onclick="findClosestDistricts()" style="background: #667eea; color: white; padding: 15px 30px; border: none; border-radius: 10px; font-size: 1.1rem; cursor: pointer; font-weight: bold; transition: all 0.3s ease; outline: none;">
+                    📍 What swing districts are closest to me?
+                </button>
                 <div id="closestDistricts" style="display: none; margin-top: 20px;"></div>
             </div>
         </div>
@@ -1068,6 +1066,1879 @@
             }, 100);
         }
 
+        function createDistrictCard(district) {
+            // Use white background with colored left border for much better readability
+            const borderColor = district.party === 'D' ? '#4169E1' : '#DC143C';
+            
+            let html = '<div style="padding: 20px; margin: 10px 0; background: white; border-radius: 10px; border-left: 5px solid ' + borderColor + '; box-shadow: 0 2px 10px rgba(0,0,0,0.05); transition: all 0.3s ease; text-align: center;">';
+            
+            // District name centered
+            html += '<div style="font-weight: bold; font-size: 1.3rem; color: #333; margin-bottom: 5px;">' + district.district + '</div>';
+            
+            // Miles right under it, centered
+            html += '<div style="color: #667eea; font-weight: bold; font-size: 1.1rem; margin-bottom: 15px;">' + Math.round(district.distance) + ' miles</div>';
+            
+            // Representative info line - all centered
+            html += '<div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap;">';
+            html += '<span style="color: #666;">' + district.rep + '</span>';
+            
+            // Party label with proper colors
+            const partyColor = district.party === 'D' ? '#4169E1' : '#DC143C';
+            html += '<span style="background: ' + partyColor + '; color: white; padding: 3px 8px; border-radius: 15px; font-size: 0.8rem; font-weight: bold;">' + district.party + '</span>';
+            
+            // Action label with proper colors
+            const actionColor = district.action === 'FLIP' ? '#FF6B35' : '#4CAF50';
+            html += '<span style="background: ' + actionColor + '; color: white; padding: 4px 10px; border-radius: 15px; font-size: 0.9rem; font-weight: bold;">' + district.action + '</span>';
+            
+            // PVI score
+            html += '<span style="background: #f0f0f0; color: #666; padding: 4px 8px; border-radius: 10px; font-size: 0.9rem;">' + district.pvi + '</span>';
+            html += '</div>';
+            
+            // Add cities information - centered
+            if (district.cities && district.cities.length > 0) {
+                html += '<div style="margin-top: 15px; padding: 8px 12px; background: #f8f9fa; border-radius: 8px; font-size: 0.85rem; color: #555; text-align: center;">';
+                html += '<div style="font-weight: 600; color: #333; margin-bottom: 3px;">Biggest 5 Cities:</div>';
+                html += '<div style="line-height: 1.3;">' + district.cities.join(', ') + '</div>';
+                html += '</div>';
+            }
+            
+            html += '</div>';
+            
+            return html;
+        }
+
+        // District mappings
+        const districtMappings = {
+            "Alaska": ["AK-AL"],
+            "Arizona": ["AZ-01", "AZ-02", "AZ-04", "AZ-06"],
+            "California": ["CA-09", "CA-13", "CA-21", "CA-22", "CA-27", "CA-41", "CA-45", "CA-47", "CA-49"],
+            "Colorado": ["CO-03", "CO-08"],
+            "Connecticut": ["CT-05"],
+            "Florida": ["FL-23", "FL-25"],
+            "Nevada": ["NV-01", "NV-03", "NV-04"]
+        };
+
+        // Known college coordinates - ONLY as last resort fallback
+        const knownCollegeCoordinates = {
+            // AZ-01 colleges
+            'Scottsdale Community College': [33.4942, -111.9261],
+            'Arizona State University - Tempe Campus': [33.4255, -111.9400],
+            'Arizona State University - Downtown Phoenix Campus': [33.4518, -112.0740],
+            'Arizona State University - West Campus': [33.6068, -112.1626],
+            'Arizona State University - Polytechnic Campus': [33.3062, -111.6790],
+            'Paradise Valley Community College': [33.6532, -112.0090],
+            
+            // AZ-02 colleges (updated with revised data)
+            'Northern Arizona University': [35.1815, -111.6560],
+            'Coconino Community College - Lone Tree Campus': [35.1751, -111.6182],
+            'Coconino Community College - Fourth Street Campus': [35.2186, -111.6513],
+            'Embry-Riddle Aeronautical University - Prescott': [34.6146, -112.4504],
+            'Prescott College': [34.5401, -112.4685],
+            'Yavapai College - Prescott Campus': [34.5401, -112.4685],
+            'Yavapai College - Verde Valley Campus': [34.7539, -112.1026],
+            'Yavapai College - Sedona Center': [34.8697, -111.7610], // Updated for Arts Village Dr location
+            'Northland Pioneer College - Holbrook Campus': [34.9025, -110.1565],
+            'Northland Pioneer College - Show Low Campus': [34.2542, -110.0298],
+            'Northland Pioneer College - Snowflake Campus': [34.5128, -110.0784],
+            'Northland Pioneer College - Winslow Campus': [35.0242, -110.6973],
+            'Diné College - Tsaile Campus': [36.2950, -109.2014],
+            'Coconino Community College - Page Campus': [36.9147, -111.4558],
+            'Glendale Community College': [33.5729, -112.1826],
+            'Central Arizona College - Apache Junction Campus': [33.4481, -111.5496],
+            
+            // CA-09 colleges
+            'San Joaquin Delta College - Stockton Campus': [37.9577, -121.2908],
+            'San Joaquin Delta College - Mountain House Campus': [37.7617, -121.5380],
+            'University of the Pacific': [37.9792, -121.3047],
+            'California State University Stanislaus - Stockton Campus': [37.9577, -121.2908],
+            'California State University Stanislaus - Main Campus': [37.5289, -120.8444],
+
+            // CA-41 colleges
+            'UC Riverside': [33.97350351814895, -117.32982172444999], // Manual override coordinates
+            'University of California Riverside': [33.97350351814895, -117.32982172444999], // Alternative name
+            'Mt. San Jacinto College - San Jacinto Campus': [33.806990713859385, -116.97132456626241], // Manual override coordinates
+            
+            // CA-45 colleges
+            'Coastline College - Westminster Campus': [33.75725775515292, -117.98479549944804], // Manual override coordinates
+            'Chapman University': [33.79281969747484, -117.85425622884149], // Manual override coordinates
+            'Saddleback College': [33.554461451895634, -117.66402935613554], // Manual override coordinates
+            
+            // CA-49 colleges
+            'MiraCosta College - San Elijo Campus': [33.0175403843811, -117.25819318280678], // Manual override coordinates
+        };
+
+        // State and city coordinates for fallbacks
+        const stateCoordinates = {
+            'AK': [64.0685, -152.2782],
+            'AZ': [34.0489, -111.0937],
+            'CA': [36.7783, -119.4179],
+            'CO': [39.7392, -104.9903],
+            'CT': [41.6032, -73.0877],
+            'FL': [27.7663, -82.6404],
+            'NV': [38.8026, -116.4194]
+        };
+
+        const cityCoordinates = {
+            'Anchorage': [61.2181, -149.9003],
+            'Fairbanks': [64.8401, -147.7194],
+            'Scottsdale': [33.4942, -111.9261],
+            'Phoenix': [33.4484, -112.0740],
+            'Flagstaff': [35.1983, -111.6513],
+            'Tempe': [33.4255, -111.9400],
+            'Tucson': [32.2226, -110.9747],
+            'Mesa': [33.4152, -111.8315],
+            'Glendale': [33.5387, -112.1860],
+            'Chandler': [33.3062, -111.8413],
+            'Peoria': [33.5806, -112.2374],
+            'Surprise': [33.6292, -112.3679],
+            'Avondale': [33.4356, -112.3496],
+            'Goodyear': [33.4355, -112.3579],
+            'Buckeye': [33.3703, -112.5838],
+            'El Mirage': [33.6131, -112.3249],
+            'Tolleson': [33.4503, -112.2585],
+            'Youngtown': [33.5937, -112.3018],
+            'Las Vegas': [36.1699, -115.1398],
+            'Henderson': [36.0397, -114.9817],
+            'Stockton': [37.9577, -121.2908],
+            'Merced': [37.3022, -120.4829],
+            'Irvine': [33.6846, -117.8265]
+        };
+
+        // Initialize the application
+        function init() {
+            console.log('App initialized successfully');
+            console.log('District mappings loaded:', districtMappings);
+            initializeCollegeData();
+            setupEventListeners();
+        }
+
+        function initializeCollegeData() {
+            Object.keys(districtMappings).forEach(state => {
+                collegeData[state] = {};
+                districtMappings[state].forEach(district => {
+                    collegeData[state][district] = [];
+                });
+            });
+            console.log('Data structure initialized');
+        }
+
+        function setupEventListeners() {
+            const stateSelect = document.getElementById('stateSelect');
+            const districtSelect = document.getElementById('districtSelect');
+
+            stateSelect.addEventListener('change', function() {
+                const selectedState = this.value;
+                console.log('State selected:', selectedState);
+                populateDistrictDropdown(selectedState);
+                resetDisplay();
+            });
+
+            districtSelect.addEventListener('change', function() {
+                const selectedState = stateSelect.value;
+                const selectedDistrict = this.value;
+                console.log('District selected:', selectedDistrict, 'for state:', selectedState);
+                if (selectedState && selectedDistrict) {
+                    displayColleges(selectedState, selectedDistrict);
+                }
+            });
+        }
+
+        function populateDistrictDropdown(state) {
+            const districtSelect = document.getElementById('districtSelect');
+            districtSelect.innerHTML = '<option value="">Choose a district...</option>';
+            
+            console.log('Populating districts for state:', state);
+            
+            if (state && districtMappings[state]) {
+                districtSelect.disabled = false;
+                const districts = districtMappings[state];
+                console.log('Districts for', state, ':', districts);
+                
+                districts.forEach(district => {
+                    const option = document.createElement('option');
+                    option.value = district;
+                    option.textContent = district;
+                    districtSelect.appendChild(option);
+                });
+                
+                console.log('District dropdown now has', districtSelect.options.length, 'options');
+            } else {
+                districtSelect.disabled = true;
+                console.log('No districts found for state:', state);
+            }
+        }
+
+        function resetDisplay() {
+            document.getElementById('stats').style.display = 'none';
+            document.getElementById('mapContainer').style.display = 'none';
+            document.getElementById('collegeList').style.display = 'none';
+            
+            if (map) {
+                clearMarkers();
+            }
+        }
+
+        async function displayColleges(state, district) {
+            document.getElementById('collegeItems').innerHTML = '<div class="loading"><h3>Loading ' + district + ' college data...</h3><p>Please wait while we fetch the latest information.</p></div>';
+            document.getElementById('collegeList').style.display = 'block';
+
+            await loadDistrictData(district);
+            
+            const collegeDataForDistrict = collegeData[state] && collegeData[state][district] ? collegeData[state][district] : [];
+            
+            let allColleges = [];
+            let withinColleges = [];
+            let nearColleges = [];
+
+            if (Array.isArray(collegeDataForDistrict)) {
+                allColleges = collegeDataForDistrict;
+                withinColleges = collegeDataForDistrict;
+            } else if (collegeDataForDistrict.within || collegeDataForDistrict.near) {
+                withinColleges = collegeDataForDistrict.within || [];
+                nearColleges = collegeDataForDistrict.near || [];
+                allColleges = withinColleges.concat(nearColleges);
+            }
+            
+            if (allColleges.length === 0) {
+                showNoData(state, district);
+            } else {
+                updateStats(allColleges);
+                
+                document.getElementById('stats').style.display = 'grid';
+                document.getElementById('mapContainer').style.display = 'block';
+                document.getElementById('collegeList').style.display = 'block';
+                
+                initializeMap();
+                
+                // Load district boundaries for the selected state
+                await loadDistrictBoundaries(state);
+                
+                setTimeout(function() {
+                    addMarkersToMap(allColleges);
+                    // Always update district boundaries to highlight the correct district
+                    addDistrictBoundariesToMap(district);
+                }, 200);
+                
+                displayCollegeListWithSections(district, withinColleges, nearColleges);
+            }
+        }
+
+        async function loadDistrictBoundaries(state) {
+            // Mapping of states to their boundary file names
+            const boundaryFiles = {
+                'Arizona': 'data/boundaries/arizona_districts_119th.json',
+                'California': 'data/boundaries/california_districts_119th.json',
+                'Colorado': 'data/boundaries/colorado_districts_119th.json',
+                'Connecticut': 'data/boundaries/connecticut_districts_119th.json',
+                'Florida': 'data/boundaries/florida_districts_119th.json',
+                'Illinois': 'data/boundaries/illinois_districts_119th.json',
+                'Indiana': 'data/boundaries/indiana_districts_119th.json',
+                'Iowa': 'data/boundaries/iowa_districts_119th.json',
+                'Maine': 'data/boundaries/maine_districts_119th.json',
+                'Maryland': 'data/boundaries/maryland_districts_119th.json',
+                'Michigan': 'data/boundaries/michigan_districts_119th.json',
+                'Minnesota': 'data/boundaries/minnesota_districts_119th.json',
+                'Montana': 'data/boundaries/montana_districts_119th.json',
+                'Nebraska': 'data/boundaries/nebraska_districts_119th.json',
+                'Nevada': 'data/boundaries/nevada_districts_119th.json',
+                'New Hampshire': 'data/boundaries/newhampshire_districts_119th.json',
+                'New Jersey': 'data/boundaries/newjersey_districts_119th.json',
+                'New Mexico': 'data/boundaries/newmexico_districts_119th.json',
+                'New York': 'data/boundaries/newyork_districts_119th.json',
+                'North Carolina': 'data/boundaries/northcarolina_districts_119th.json',
+                'Ohio': 'data/boundaries/ohio_districts_119th.json',
+                'Oregon': 'data/boundaries/oregon_districts_119th.json',
+                'Pennsylvania': 'data/boundaries/pennsylvania_districts_119th.json',
+                'Texas': 'data/boundaries/texas_districts_119th.json',
+                'Virginia': 'data/boundaries/virginia_districts_119th.json',
+                'Washington': 'data/boundaries/washington_districts_119th.json',
+                'Wisconsin': 'data/boundaries/wisconsin_districts_119th.json'
+            };
+            
+            const boundaryFile = boundaryFiles[state];
+            if (!boundaryFile) {
+                console.log('📍 No boundary file configured for state:', state);
+                return;
+            }
+            
+            // Check if we already loaded this state's boundaries
+            if (districtBoundaries && districtBoundaries.state === state) {
+                console.log('📍 District boundaries already loaded for', state);
+                return; // Don't call addDistrictBoundariesToMap here - it will be called later
+            }
+            
+            try {
+                console.log('📍 Loading district boundaries for', state, 'from', boundaryFile);
+                const response = await fetch(boundaryFile);
+                
+                if (!response.ok) {
+                    console.log('📍 Could not load boundary file:', boundaryFile, '- Status:', response.status);
+                    console.log('📍 Make sure the file exists at:', window.location.origin + '/' + boundaryFile);
+                    return;
+                }
+                
+                const geojsonData = await response.json();
+                
+                if (!geojsonData || !geojsonData.features) {
+                    console.log('📍 Invalid GeoJSON data loaded from', boundaryFile);
+                    return;
+                }
+                
+                districtBoundaries = {
+                    state: state,
+                    data: geojsonData
+                };
+                
+                console.log('📍 Successfully loaded', geojsonData.features.length, 'district boundaries for', state);
+                console.log('📍 Sample feature:', geojsonData.features[0]?.properties);
+                // Don't add to map here - it will be called later with the selected district
+                
+            } catch (error) {
+                console.log('📍 Error loading district boundaries:', error.message);
+                console.log('📍 Full error:', error);
+            }
+        }
+
+        function addDistrictBoundariesToMap(selectedDistrict = null) {
+            if (!map || !districtBoundaries || !districtBoundariesVisible) {
+                return;
+            }
+            
+            // Store the selected district for toggle functionality
+            currentSelectedDistrict = selectedDistrict;
+            
+            // ALWAYS remove existing district boundaries to ensure clean refresh
+            if (map.districtLayer) {
+                map.removeLayer(map.districtLayer);
+                map.districtLayer = null;
+            }
+            
+            // Style function for district boundaries
+            function districtStyle(feature) {
+                const districtId = getDistrictId(feature);
+                const districtInfo = districtData[districtId];
+                const isSelected = selectedDistrict && districtId === selectedDistrict;
+                
+                // Default styling
+                let color = '#666666';
+                let fillColor = 'transparent';
+                let weight = 2;
+                let opacity = 0.3; // Reduced opacity for non-selected districts
+                let fillOpacity = 0;
+                
+                // Color code based on party and action if this is a swing district
+                if (districtInfo) {
+                    if (districtInfo.action === 'FLIP') {
+                        color = '#FF6B35'; // Orange for flip districts
+                        weight = 3;
+                    } else if (districtInfo.action === 'HOLD') {
+                        color = districtInfo.party === 'D' ? '#4169E1' : '#DC143C'; // Blue for Dem, Red for Rep
+                        weight = 3;
+                    }
+                    opacity = 0.6; // Higher opacity for swing districts
+                }
+                
+                // HIGHLIGHT SELECTED DISTRICT
+                if (isSelected) {
+                    weight = 5; // Thicker border
+                    opacity = 1.0; // Full opacity
+                    fillOpacity = 0.15; // Light fill to highlight the area
+                    fillColor = color; // Fill with the same color as border
+                    
+                    // Add a subtle glow effect with a second border
+                    // We'll handle this with CSS-like effects
+                }
+                
+                return {
+                    color: color,
+                    weight: weight,
+                    opacity: opacity,
+                    fillColor: fillColor,
+                    fillOpacity: fillOpacity,
+                    // Add a subtle animation for the selected district
+                    dashArray: isSelected ? '' : '',
+                    className: isSelected ? 'selected-district' : ''
+                };
+            }
+            
+            // Create popup content for districts
+            function onEachDistrict(feature, layer) {
+                const districtId = getDistrictId(feature);
+                const districtInfo = districtData[districtId];
+                const isSelected = selectedDistrict && districtId === selectedDistrict;
+                
+                let popupContent = '<div style="font-weight: bold; margin-bottom: 8px; font-size: 1.1rem;">' + districtId;
+                if (isSelected) {
+                    popupContent += ' <span style="background: #4CAF50; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem;">SELECTED</span>';
+                }
+                popupContent += '</div>';
+                
+                if (districtInfo) {
+                    const partyColor = districtInfo.party === 'D' ? '#4169E1' : '#DC143C';
+                    const actionColor = districtInfo.action === 'FLIP' ? '#FF6B35' : '#4CAF50';
+                    
+                    popupContent += '<div style="margin-bottom: 4px;"><strong>Representative:</strong> ' + districtInfo.rep + '</div>';
+                    popupContent += '<div style="margin-bottom: 8px;">';
+                    popupContent += '<span style="background: ' + partyColor + '; color: white; padding: 3px 8px; border-radius: 15px; font-size: 0.8rem; margin-right: 5px;">' + districtInfo.party + '</span>';
+                    popupContent += '<span style="background: ' + actionColor + '; color: white; padding: 4px 10px; border-radius: 15px; font-size: 0.9rem;">' + districtInfo.action + '</span>';
+                    popupContent += '</div>';
+                    popupContent += '<div><strong>Cook PVI:</strong> ' + districtInfo.pvi + '</div>';
+                    
+                    if (districtInfo.cities) {
+                        popupContent += '<div style="margin-top: 8px;"><strong>Major Cities:</strong><br>' + districtInfo.cities.slice(0, 3).join(', ') + '</div>';
+                    }
+                } else {
+                    popupContent += '<div style="color: #666;">Not a swing district</div>';
+                }
+                
+                layer.bindPopup(popupContent, { maxWidth: 300 });
+                
+                // Add hover effects
+                layer.on({
+                    mouseover: function(e) {
+                        if (!isSelected) {
+                            layer.setStyle({
+                                weight: 4,
+                                opacity: 0.8
+                            });
+                        }
+                    },
+                    mouseout: function(e) {
+                        if (!isSelected) {
+                            // Reset to original style
+                            const originalStyle = districtStyle(feature);
+                            layer.setStyle(originalStyle);
+                        }
+                    }
+                });
+            }
+            
+            // Add the district boundaries to the map
+            map.districtLayer = L.geoJSON(districtBoundaries.data, {
+                style: districtStyle,
+                onEachFeature: onEachDistrict
+            }).addTo(map);
+            
+            console.log('📍 District boundaries added to map' + (selectedDistrict ? ' with ' + selectedDistrict + ' highlighted' : ''));
+            
+            // Update toggle button state
+            updateDistrictToggleButton();
+        }
+        
+        function getDistrictId(feature) {
+            // Extract district ID from the GeoJSON feature properties
+            // Census Bureau files typically use different field names
+            const props = feature.properties;
+            
+            // Try common field names used by Census Bureau
+            if (props.GEOID) {
+                // GEOID format is typically SSFP where SS = state FIPS, FP = district number
+                const stateCode = props.GEOID.substring(0, 2);
+                const districtNum = props.GEOID.substring(2);
+                return getStateAbbrev(stateCode) + '-' + districtNum.padStart(2, '0');
+            }
+            
+            if (props.CD119FP && props.STATEFP) {
+                return getStateAbbrev(props.STATEFP) + '-' + props.CD119FP.padStart(2, '0');
+            }
+            
+            // Fallback - try to extract from name fields
+            if (props.NAMELSAD) {
+                // Example: "Congressional District 1"
+                const match = props.NAMELSAD.match(/(\d+)/);
+                if (match) {
+                    return getStateAbbrev(props.STATEFP || '04') + '-' + match[1].padStart(2, '0');
+                }
+            }
+            
+            return 'UNKNOWN';
+        }
+        
+        function getStateAbbrev(fipsCode) {
+            const fipsToState = {
+                '02': 'AK', '04': 'AZ', '06': 'CA', '08': 'CO', 
+                '09': 'CT', '12': 'FL', '17': 'IL', '18': 'IN',
+                '19': 'IA', '23': 'ME', '24': 'MD', '26': 'MI',
+                '27': 'MN', '30': 'MT', '31': 'NE', '32': 'NV',
+                '33': 'NH', '34': 'NJ', '35': 'NM', '36': 'NY',
+                '37': 'NC', '39': 'OH', '41': 'OR', '42': 'PA',
+                '48': 'TX', '51': 'VA', '53': 'WA', '55': 'WI'
+            };
+            return fipsToState[fipsCode] || 'XX';
+        }
+
+        async function loadDistrictData(district) {
+            if (loadedDistricts.has(district)) {
+                return;
+            }
+
+            try {
+                const possibleFilenames = [
+                    'data/' + district + '.csv',
+                    'data/' + district.replace('-', '') + '.csv',
+                    district + '.csv',
+                    district.replace('-', '') + '.csv'
+                ];
+
+                let csvText = null;
+                let successfulUrl = null;
+
+                for (let i = 0; i < possibleFilenames.length; i++) {
+                    const filename = possibleFilenames[i];
+                    try {
+                        console.log('Trying to load: ' + filename);
+                        const response = await fetch(filename);
+                        if (response.ok) {
+                            csvText = await response.text();
+                            successfulUrl = filename;
+                            console.log('Successfully loaded: ' + filename);
+                            break;
+                        }
+                    } catch (error) {
+                        console.log('Failed to load ' + filename + ':', error.message);
+                    }
+                }
+
+                if (!csvText) {
+                    console.log('No CSV file found for ' + district);
+                    loadedDistricts.add(district);
+                    return;
+                }
+
+                const colleges = await parseCSV(csvText, district);
+                
+                const state = Object.keys(districtMappings).find(function(s) {
+                    return districtMappings[s].includes(district);
+                });
+
+                if (state && colleges) {
+                    collegeData[state][district] = colleges;
+                    console.log('Loaded data for ' + district + ' from ' + successfulUrl);
+                }
+
+                loadedDistricts.add(district);
+            } catch (error) {
+                console.log('Error loading data for ' + district + ':', error);
+                loadedDistricts.add(district);
+            }
+        }
+
+        async function parseCSV(csvText, district) {
+            const lines = csvText.split('\n').filter(function(line) {
+                return line.trim();
+            });
+            
+            if (lines.length < 3) {
+                return { within: [], near: [] };
+            }
+
+            const colleges = { within: [], near: [] };
+            let currentSection = 'within';
+            let headers = [];
+            let headerRowFound = false;
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                
+                // Skip section separator lines and headers
+                if (line.toUpperCase().includes('COLLEGES AND UNIVERSITIES NEAR') || 
+                    line.toUpperCase().includes('COLLEGES NEAR')) {
+                    currentSection = 'near';
+                    headerRowFound = false;
+                    console.log('📋 Switching to NEAR section');
+                    continue;
+                } else if (line.toUpperCase().includes('COLLEGES AND UNIVERSITIES WITHIN') ||
+                           line.toUpperCase().includes('COLLEGES IN')) {
+                    currentSection = 'within';
+                    headerRowFound = false;
+                    console.log('📋 Switching to WITHIN section');
+                    continue;
+                }
+
+                const values = parseCSVLine(line);
+                
+                // Skip empty lines
+                if (values.length === 0 || !values[0] || values[0].trim() === '') {
+                    continue;
+                }
+
+                // Check if this is a header row
+                if (!headerRowFound && (values[0].toLowerCase().includes('institution') || 
+                                       values[0].toLowerCase() === 'institution name')) {
+                    headers = values.map(function(h) { return h.trim(); });
+                    headerRowFound = true;
+                    console.log('Found headers for ' + currentSection + ' section:', headers);
+                    continue;
+                }
+
+                // Skip if we haven't found headers yet
+                if (!headerRowFound || headers.length === 0) {
+                    continue;
+                }
+
+                // Skip header repetitions in data
+                if (values[0].toLowerCase().includes('institution name') || 
+                    values[0].toLowerCase() === 'institution name') {
+                    console.log('Skipping duplicate header row');
+                    continue;
+                }
+
+                // Parse college data
+                const college = await parseCollegeData(values, headers, district, currentSection);
+                if (college && college.name && college.name.length > 3) {
+                    colleges[currentSection].push(college);
+                }
+            }
+
+            console.log('Parsed ' + colleges.within.length + ' colleges within ' + district + ' and ' + colleges.near.length + ' colleges near ' + district);
+            return colleges;
+        }
+
+        function isExcludedCollege(name) {
+            const nameUpper = name.toUpperCase();
+            
+            // List of specific colleges to exclude
+            const excludedColleges = [
+                'MT. SAN ANTONIO COLLEGE',
+                'MT SAN ANTONIO COLLEGE',
+                'MOUNT SAN ANTONIO COLLEGE'
+            ];
+            
+            // Check if the college name matches any excluded colleges
+            return excludedColleges.some(excluded => nameUpper.includes(excluded));
+        }
+
+        function isChristianSchool(name) {
+            const nameUpper = name.toUpperCase();
+            
+            // List of Christian/religious indicators to filter out
+            const christianIndicators = [
+                'CONCORDIA',
+                'SEMINARY',
+                'BIBLICAL',
+                'BIBLE',
+                'CHRISTIAN',
+                'LUTHERAN',
+                'BAPTIST',
+                'METHODIST',
+                'PRESBYTERIAN',
+                'PENTECOSTAL',
+                'EVANGELICAL',
+                'CATHOLIC',
+                'JESUIT',
+                'FRANCISCAN',
+                'DOMINICAN',
+                'BENEDICTINE',
+                'ADVENTIST',
+                'MENNONITE',
+                'DIVINITY',
+                'THEOLOGY',
+                'CHURCH OF',
+                'RELIGIOUS',
+                'FAITH',
+                'GOSPEL',
+                'HOLY',
+                'SACRED',
+                'SAINT',
+                'ST.',
+                'TRINITY',
+                'GRACE',
+                'COVENANT',
+                'CHRIST',
+                'JESUS',
+                'NAZARENE',
+                'EPISCOPAL',
+                'ASSEMBLY OF GOD'
+            ];
+            
+            // List of non-campus facilities to filter out
+            const servicesCenterIndicators = [
+                'SERVICES CENTER',
+                'SERVICE CENTER',
+                'STUDENT SERVICES',
+                'ADMINISTRATIVE CENTER',
+                'ADMIN CENTER',
+                'DISTRICT OFFICE',
+                'ENROLLMENT CENTER',
+                'TESTING CENTER',
+                'CAREER CENTER'
+            ];
+            
+            // Check if the college name contains any Christian/religious indicators
+            const isReligious = christianIndicators.some(indicator => nameUpper.includes(indicator));
+            
+            // Check if the college name contains any services center indicators
+            const isServicesCenter = servicesCenterIndicators.some(indicator => nameUpper.includes(indicator));
+            
+            return isReligious || isServicesCenter;
+        }
+
+        function calculateVoterDriveSuitability(college) {
+            let score = 0;
+            let details = [];
+            
+            // ENROLLMENT SCORING (0-50 points)
+            const enrollment = college.enrollment || 0;
+            if (enrollment >= 15000) {
+                score += 50;
+                details.push(`Large enrollment (${enrollment.toLocaleString()})`);
+            } else if (enrollment >= 8000) {
+                score += 40;
+                details.push(`Good enrollment (${enrollment.toLocaleString()})`);
+            } else if (enrollment >= 3000) {
+                score += 30;
+                details.push(`Medium enrollment (${enrollment.toLocaleString()})`);
+            } else if (enrollment >= 1000) {
+                score += 20;
+                details.push(`Small enrollment (${enrollment.toLocaleString()})`);
+            } else {
+                score += 10;
+                details.push(`Very small enrollment (${enrollment.toLocaleString()})`);
+            }
+            
+            // CAMPUS TYPE SCORING (0-30 points)
+            const collegeName = (college.name || '').toLowerCase();
+            const collegeType = (college.type || '').toLowerCase();
+            
+            // Community colleges often have the best results for voter drives
+            if (collegeName.includes('community') || collegeType.includes('community')) {
+                score += 30;
+                details.push('Community college (excellent for voter drives)');
+            }
+            // Major universities typically have large quads and gathering spaces
+            else if (collegeName.includes('university') || collegeName.includes('state')) {
+                score += 30;
+                details.push('University campus (likely large quad areas)');
+            }
+            // Art, technical, or specialized schools may have limited outdoor gathering areas
+            else if (collegeName.includes('art') || collegeName.includes('technical') || 
+                     collegeName.includes('institute') || collegeType.includes('technical')) {
+                score += 10;
+                details.push('Specialized school (limited outdoor spaces)');
+            }
+            // Default for other colleges
+            else {
+                score += 15;
+                details.push('Standard college campus');
+            }
+            
+            // CAMPUS FEATURES SCORING (0-20 points)
+            // Look for indicators of good outdoor gathering spaces
+            if (collegeName.includes('quad') || collegeName.includes('plaza') || 
+                collegeName.includes('commons') || collegeName.includes('green')) {
+                score += 20;
+                details.push('Campus has named quad/gathering areas');
+            }
+            // Downtown or urban campuses might have limited outdoor space
+            else if (collegeName.includes('downtown') || collegeName.includes('urban') ||
+                     collegeName.includes('city center')) {
+                score += 5;
+                details.push('Urban campus (limited outdoor space)');
+            }
+            // Main campuses typically have better outdoor facilities than satellite locations
+            else if (collegeName.includes('main') || collegeName.includes('campus')) {
+                score += 15;
+                details.push('Main campus (good outdoor facilities)');
+            }
+            // Satellite campuses, centers, or extensions often have limited space
+            else if (collegeName.includes('center') || collegeName.includes('extension') ||
+                     collegeName.includes('satellite') || collegeName.includes('branch')) {
+                score += 5;
+                details.push('Satellite location (limited outdoor space)');
+            }
+            else {
+                score += 10;
+                details.push('Standard campus facilities');
+            }
+            
+            // DETERMINE FINAL SUITABILITY
+            let suitability;
+            if (score >= 80) {
+                suitability = 'High';
+            } else if (score >= 50) {
+                suitability = 'Medium';
+            } else {
+                suitability = 'Low';
+            }
+            
+            console.log(`📊 Suitability calculated for ${college.name}: ${suitability} (${score}/100)`);
+            console.log(`📝 Factors: ${details.join(', ')}`);
+            
+            return {
+                suitability: suitability,
+                score: score,
+                details: details
+            };
+        }
+
+        async function parseCollegeData(values, headers, district, section) {
+            const college = {
+                name: values[0].trim() || '',
+                district: district,
+                section: section,
+                enrollment: 2000,
+                hasQuad: true,
+                suitability: "High",
+                type: "College",
+                publicPrivate: "Public"
+            };
+
+            console.log('🏫 Parsing college:', college.name);
+
+            // Filter out Christian/religious institutions
+            if (isChristianSchool(college.name)) {
+                console.log('❌ Filtering out Christian school:', college.name);
+                return null;
+            }
+
+            // Filter out specific excluded colleges
+            if (isExcludedCollege(college.name)) {
+                console.log('❌ Filtering out excluded college:', college.name);
+                return null;
+            }
+
+            for (let j = 0; j < headers.length; j++) {
+                const header = headers[j];
+                const value = values[j] ? values[j].trim() : '';
+                if (!value) continue;
+
+                const headerLower = header.toLowerCase();
+
+                if (headerLower === 'institution' || headerLower === 'institution name') {
+                    college.name = value;
+                } else if (headerLower === 'institution type' || headerLower === 'type') {
+                    college.type = value;
+                } else if (headerLower === 'address') {
+                    college.address = value;
+                    parseAddressComponents(college, value);
+                } else if (headerLower === 'city') {
+                    college.city = value;
+                } else if (headerLower === 'state') {
+                    college.state = value;
+                } else if (headerLower === 'zip code' || headerLower === 'zipcode' || headerLower === 'zip') {
+                    college.zipCode = value;
+                } else if (headerLower === 'enrollment') {
+                    const enrollmentStr = value.replace(/,/g, '');
+                    const enrollmentMatch = enrollmentStr.match(/(\d+)/);
+                    if (enrollmentMatch) {
+                        college.enrollment = parseInt(enrollmentMatch[1]);
+                    }
+                } else if (headerLower.includes('suitability') || headerLower === 'voter drive suitability') {
+                    if (value.toLowerCase().includes('high') || value.toLowerCase().includes('excellent') || value.toLowerCase().includes('good')) {
+                        college.suitability = 'High';
+                    } else if (value.toLowerCase().includes('medium')) {
+                        college.suitability = 'Medium';
+                    } else if (value.toLowerCase().includes('low')) {
+                        college.suitability = 'Low';
+                    }
+                } else if (headerLower === 'public/private') {
+                    college.publicPrivate = value;
+                } else if (headerLower === 'contact phone' || headerLower === 'phone' || headerLower === 'founded') {
+                    if (value.match(/\(\d{3}\)\s*\d{3}-\d{4}/)) {
+                        college.phone = value;
+                    }
+                }
+            }
+
+            if (!college.phone) {
+                for (let k = 0; k < values.length; k++) {
+                    const val = values[k];
+                    if (val && val.match(/\(\d{3}\)\s*\d{3}-\d{4}/)) {
+                        college.phone = val.trim();
+                        break;
+                    }
+                }
+            }
+
+            if (!college.address && college.city && college.state) {
+                const addressParts = [];
+                if (values[1]) addressParts.push(values[1]);
+                addressParts.push(college.city);
+                addressParts.push(college.state);
+                if (college.zipCode) addressParts.push(college.zipCode);
+                college.address = addressParts.join(', ');
+                college.streetAddress = values[1] || '';
+            }
+
+            // PRIORITY #1: Check manual coordinates database FIRST
+            const knownCoords = findKnownCoordinates(college.name);
+            if (knownCoords) {
+                college.lat = knownCoords[0];
+                college.lng = knownCoords[1];
+                college.geocodingSource = 'Manual override database';
+                console.log('⚡ MANUAL OVERRIDE: ' + college.name + ' → ' + college.lat + ', ' + college.lng);
+                
+                // CALCULATE VOTER DRIVE SUITABILITY AUTOMATICALLY
+                const suitabilityResult = calculateVoterDriveSuitability(college);
+                college.suitability = suitabilityResult.suitability;
+                college.suitabilityScore = suitabilityResult.score;
+                college.suitabilityDetails = suitabilityResult.details;
+                
+                return college;
+            }
+
+            // PRIORITY #2: For CA-21 colleges with wrong addresses, use EXACT coordinates
+            if (college.name.includes('Fresno City College')) {
+                college.lat = 36.76621911129075;
+                college.lng = -119.79727927331058;
+                college.geocodingSource = 'Manual fix for Fresno City College';
+                console.log('🔧 MANUAL FIX: Fresno City College → 36.76621911129075, -119.79727927331058');
+                
+                // CALCULATE VOTER DRIVE SUITABILITY AUTOMATICALLY
+                const suitabilityResult = calculateVoterDriveSuitability(college);
+                college.suitability = suitabilityResult.suitability;
+                college.suitabilityScore = suitabilityResult.score;
+                college.suitabilityDetails = suitabilityResult.details;
+                
+                return college;
+            }
+
+            if (college.name.includes('College of the Sequoias')) {
+                if (college.address && college.address.includes('Tulare')) {
+                    college.lat = 36.19600741316634;
+                    college.lng = -119.28154532208914;
+                    college.geocodingSource = 'Manual fix for College of the Sequoias - Tulare';
+                    console.log('🔧 MANUAL FIX: College of the Sequoias Tulare → 36.19600741316634, -119.28154532208914');
+                    
+                    // CALCULATE VOTER DRIVE SUITABILITY AUTOMATICALLY
+                    const suitabilityResult = calculateVoterDriveSuitability(college);
+                    college.suitability = suitabilityResult.suitability;
+                    college.suitabilityScore = suitabilityResult.score;
+                    college.suitabilityDetails = suitabilityResult.details;
+                    
+                    return college;
+                }
+            }
+
+            // PRIORITY #3: For CA-22 colleges with wrong addresses, use EXACT coordinates
+            if (college.name.includes('Taft College')) {
+                college.lat = 35.149517884255346;
+                college.lng = -119.4597667;
+                college.geocodingSource = 'Manual fix for Taft College';
+                console.log('🔧 MANUAL FIX: Taft College → 35.149517884255346, -119.4597667');
+                
+                // CALCULATE VOTER DRIVE SUITABILITY AUTOMATICALLY
+                const suitabilityResult = calculateVoterDriveSuitability(college);
+                college.suitability = suitabilityResult.suitability;
+                college.suitabilityScore = suitabilityResult.score;
+                college.suitabilityDetails = suitabilityResult.details;
+                
+                return college;
+            }
+
+            // PRIORITY #4: For CA-41 colleges with wrong addresses, use EXACT coordinates
+            if (college.name.includes('UC Riverside') || college.name.includes('University of California') && college.name.includes('Riverside')) {
+                college.lat = 33.97350351814895;
+                college.lng = -117.32982172444999;
+                college.geocodingSource = 'Manual fix for UC Riverside';
+                console.log('🔧 MANUAL FIX: UC Riverside → 33.97350351814895, -117.32982172444999');
+                
+                // CALCULATE VOTER DRIVE SUITABILITY AUTOMATICALLY
+                const suitabilityResult = calculateVoterDriveSuitability(college);
+                college.suitability = suitabilityResult.suitability;
+                college.suitabilityScore = suitabilityResult.score;
+                college.suitabilityDetails = suitabilityResult.details;
+                
+                return college;
+            }
+
+            if (college.name.includes('Mt. San Jacinto College') && college.name.includes('San Jacinto')) {
+                college.lat = 33.806990713859385;
+                college.lng = -116.97132456626241;
+                college.geocodingSource = 'Manual fix for Mt. San Jacinto College - San Jacinto Campus';
+                console.log('🔧 MANUAL FIX: Mt. San Jacinto College San Jacinto → 33.806990713859385, -116.97132456626241');
+                
+                // CALCULATE VOTER DRIVE SUITABILITY AUTOMATICALLY
+                const suitabilityResult = calculateVoterDriveSuitability(college);
+                college.suitability = suitabilityResult.suitability;
+                college.suitabilityScore = suitabilityResult.score;
+                college.suitabilityDetails = suitabilityResult.details;
+                
+                return college;
+            }
+
+            // PRIORITY #3: Only geocode if no manual coordinates exist
+            console.log('🔍 No manual coordinates found, will geocode ' + college.name);
+            await addCoordinatesImproved(college);
+            
+            // CALCULATE VOTER DRIVE SUITABILITY AUTOMATICALLY
+            const suitabilityResult = calculateVoterDriveSuitability(college);
+            college.suitability = suitabilityResult.suitability;
+            college.suitabilityScore = suitabilityResult.score;
+            college.suitabilityDetails = suitabilityResult.details;
+            
+            return college;
+        }
+
+        function parseAddressComponents(college, address) {
+            const addressMatch = address.match(/^(.*?),\s*([^,]+),\s*([A-Z]{2})\s+(\d{5})/);
+            if (addressMatch) {
+                college.streetAddress = addressMatch[1];
+                college.addressCity = addressMatch[2];
+                college.state = addressMatch[3];
+                college.zipCode = addressMatch[4];
+            } else {
+                college.streetAddress = address;
+            }
+        }
+
+        async function addCoordinatesImproved(college) {
+            console.log('🗺️ Starting coordinate lookup for:', college.name);
+            
+            // SPECIAL CASE: For ASU Tempe, try building-specific queries first
+            if (college.name.includes('Arizona State University') && college.name.includes('Tempe')) {
+                console.log('🎯 SPECIAL ASU TEMPE HANDLING - trying building queries first');
+                
+                const specialQueries = [
+                    'Student Services Building, 1151 S Forest Ave, Tempe, AZ',
+                    'Student Services Building, ASU Tempe, AZ',
+                    'ASU Student Services, 1151 S Forest Avenue, Tempe, Arizona',
+                    'Arizona State University Student Services, Tempe, AZ'
+                ];
+                
+                for (let i = 0; i < specialQueries.length; i++) {
+                    const query = specialQueries[i];
+                    console.log('🔍 SPECIAL query attempt ' + (i + 1) + ' for ASU Tempe: ' + query);
+                    
+                    const coords = await geocodeAddressExact(query, college);
+                    if (coords && coords.lat && coords.lng) {
+                        college.lat = coords.lat;
+                        college.lng = coords.lng;
+                        college.geocodingSource = 'SPECIAL ASU Tempe: ' + query;
+                        console.log('✅ SUCCESS with SPECIAL query! Geocoded ' + college.name + ' to: ' + college.lat + ', ' + college.lng);
+                        return;
+                    }
+                    
+                    await delay(750);
+                }
+                
+                console.log('⚠️ All special ASU Tempe queries failed, trying regular address queries...');
+            }
+            
+            // SPECIAL CASE: For Northern Arizona University
+            if (college.name.includes('Northern Arizona University')) {
+                console.log('🎯 SPECIAL NAU HANDLING - trying building queries first');
+                
+                const specialQueries = [
+                    'University Union, Northern Arizona University, Flagstaff, AZ',
+                    'Student Services, 1200 S Beaver St, Flagstaff, AZ',
+                    '1200 S Beaver Street, Northern Arizona University, Flagstaff, AZ',
+                    'NAU Campus, 1200 S Beaver St, Flagstaff, Arizona'
+                ];
+                
+                for (let i = 0; i < specialQueries.length; i++) {
+                    const query = specialQueries[i];
+                    console.log('🔍 SPECIAL query attempt ' + (i + 1) + ' for NAU: ' + query);
+                    
+                    const coords = await geocodeAddressExact(query, college);
+                    if (coords && coords.lat && coords.lng) {
+                        college.lat = coords.lat;
+                        college.lng = coords.lng;
+                        college.geocodingSource = 'SPECIAL NAU: ' + query;
+                        console.log('✅ SUCCESS with SPECIAL query! Geocoded ' + college.name + ' to: ' + college.lat + ', ' + college.lng);
+                        return;
+                    }
+                    
+                    await delay(750);
+                }
+                
+                console.log('⚠️ All special NAU queries failed, trying regular address queries...');
+            }
+
+            // SPECIAL CASE: For problematic CA-21 colleges
+            if (college.name.includes('Fresno City College') || college.name.includes('College of the Sequoias')) {
+                console.log('🎯 SPECIAL CA-21 HANDLING - trying address-only queries first');
+                
+                const addressOnlyQueries = [];
+                
+                if (college.name.includes('Fresno City College')) {
+                    addressOnlyQueries.push('1101 E University Ave, Fresno, CA 93741');
+                    addressOnlyQueries.push('1101 University Avenue, Fresno, California');
+                }
+                
+                if (college.name.includes('College of the Sequoias')) {
+                    addressOnlyQueries.push('4999 E Bardsley Ave, Tulare, CA 93274');
+                    addressOnlyQueries.push('4999 East Bardsley Avenue, Tulare, California');
+                }
+                
+                for (let i = 0; i < addressOnlyQueries.length; i++) {
+                    const query = addressOnlyQueries[i];
+                    console.log('🔍 ADDRESS-ONLY query attempt ' + (i + 1) + ' for ' + college.name + ': ' + query);
+                    
+                    const coords = await geocodeAddressExact(query, college);
+                    if (coords && coords.lat && coords.lng) {
+                        college.lat = coords.lat;
+                        college.lng = coords.lng;
+                        college.geocodingSource = 'ADDRESS-ONLY: ' + query;
+                        console.log('✅ SUCCESS with ADDRESS-ONLY query! Geocoded ' + college.name + ' to: ' + college.lat + ', ' + college.lng);
+                        return;
+                    }
+                    
+                    await delay(750);
+                }
+                
+                console.log('⚠️ All address-only queries failed, trying regular address queries...');
+            }
+            
+            // Regular address geocoding for all colleges
+            const addressQueries = buildAddressQueries(college);
+            
+            // Try geocoding with each address variation, prioritizing exact addresses
+            for (let i = 0; i < addressQueries.length; i++) {
+                const query = addressQueries[i];
+                console.log('🔍 Geocoding attempt ' + (i + 1) + '/' + addressQueries.length + ' for ' + college.name + ': ' + query);
+                
+                const coords = await geocodeAddressExact(query, college);
+                if (coords && coords.lat && coords.lng) {
+                    college.lat = coords.lat;
+                    college.lng = coords.lng;
+                    college.geocodingSource = 'Address: ' + query.substring(0, 50) + '...';
+                    console.log('✅ SUCCESS! Geocoded ' + college.name + ' to: ' + college.lat + ', ' + college.lng);
+                    console.log('📍 Using query: ' + query);
+                    return;
+                }
+                
+                // Add delay between requests to respect rate limits
+                await delay(750);
+            }
+
+            console.log('⚠️ All address geocoding failed for ' + college.name);
+
+            // Only use known coordinates as last resort fallback
+            const knownCoords = findKnownCoordinates(college.name);
+            if (knownCoords) {
+                college.lat = knownCoords[0];
+                college.lng = knownCoords[1];
+                college.geocodingSource = 'Fallback: Known database';
+                console.log('⚠️ Using known coordinates as fallback for ' + college.name + ': ' + college.lat + ', ' + college.lng);
+                return;
+            }
+
+            // Final fallback to city or state coordinates
+            console.log('⚠️ No known coordinates, using geographic fallback for ' + college.name);
+            useFallbackCoordinates(college);
+        }
+
+        function findKnownCoordinates(collegeName) {
+            // Try exact match first
+            if (knownCollegeCoordinates[collegeName]) {
+                return knownCollegeCoordinates[collegeName];
+            }
+
+            // Try fuzzy matching
+            const nameNormalized = collegeName.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+            
+            for (const knownName in knownCollegeCoordinates) {
+                const knownNameNormalized = knownName.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+                
+                if (nameNormalized.includes(knownNameNormalized) || knownNameNormalized.includes(nameNormalized)) {
+                    return knownCollegeCoordinates[knownName];
+                }
+            }
+
+            return null;
+        }
+
+        function buildAddressQueries(college) {
+            const queries = [];
+            
+            console.log('🔍 Building address queries for:', college.name);
+            console.log('🏠 Available address data:', {
+                address: college.address,
+                streetAddress: college.streetAddress,
+                city: college.city,
+                addressCity: college.addressCity,
+                state: college.state,
+                zipCode: college.zipCode
+            });
+            
+            // PRIORITY 1: Exact street address + city + state (this is what users see)
+            if (college.streetAddress && (college.city || college.addressCity) && college.state) {
+                const city = college.city || college.addressCity;
+                const zipPart = college.zipCode ? ' ' + college.zipCode : '';
+                const query1 = college.streetAddress + ', ' + city + ', ' + college.state + zipPart;
+                queries.push(query1);
+                console.log('✅ Query 1 (street+city+state): ' + query1);
+            }
+            
+            // PRIORITY 2: Full address field as provided in CSV
+            if (college.address && college.address.includes(',')) {
+                queries.push(college.address);
+                console.log('✅ Query 2 (full address): ' + college.address);
+            }
+            
+            // SPECIAL HANDLING for ASU Tempe - look for specific buildings
+            if (college.name.includes('Arizona State University') && college.name.includes('Tempe')) {
+                if (college.streetAddress && college.streetAddress.includes('1151')) {
+                    queries.push('Student Services Building, 1151 S Forest Ave, Tempe, AZ');
+                    queries.push('1151 S Forest Avenue, ASU Tempe, AZ');
+                    queries.push('Student Services, Arizona State University, Tempe, AZ');
+                    console.log('✅ Special ASU Tempe building queries added');
+                }
+            }
+            
+            // SPECIAL HANDLING for ASU Downtown Phoenix
+            if (college.name.includes('Arizona State University') && college.name.includes('Downtown Phoenix')) {
+                if (college.streetAddress && college.streetAddress.includes('411')) {
+                    queries.push('411 N Central Ave, Phoenix, AZ 85004');
+                    queries.push('ASU Downtown Phoenix Campus, 411 N Central Ave, Phoenix, AZ');
+                    console.log('✅ Special ASU Downtown queries added');
+                }
+            }
+            
+            // PRIORITY 3: Address + college name for enhanced matching
+            if (college.streetAddress && (college.city || college.addressCity) && college.state) {
+                const city = college.city || college.addressCity;
+                const query3 = college.streetAddress + ', ' + city + ', ' + college.state + ', ' + college.name;
+                queries.push(query3);
+                console.log('✅ Query 3 (address+name): ' + query3);
+            }
+            
+            // PRIORITY 4: General ASU campus queries (fallback)
+            if (college.name.includes('Arizona State University')) {
+                if (college.name.includes('Tempe')) {
+                    queries.push('Arizona State University, Tempe, AZ');
+                    queries.push('ASU Tempe Campus, Tempe, AZ');
+                    console.log('✅ Query ASU Tempe general');
+                } else if (college.name.includes('Downtown Phoenix')) {
+                    queries.push('Arizona State University Downtown Phoenix, Phoenix, AZ');
+                    queries.push('ASU Downtown Phoenix Campus, Phoenix, AZ');
+                    console.log('✅ Query ASU Downtown general');
+                }
+            }
+            
+            // PRIORITY 5: College name + city only (less precise)
+            if ((college.city || college.addressCity) && college.state) {
+                const city = college.city || college.addressCity;
+                const query5 = college.name + ', ' + city + ', ' + college.state;
+                queries.push(query5);
+                console.log('✅ Query 5 (name+city): ' + query5);
+            }
+            
+            console.log('📝 Final query list:', queries);
+            return queries.filter(q => q && q.length > 10);
+        }
+
+        async function geocodeAddressExact(address, college) {
+            try {
+                const encodedAddress = encodeURIComponent(address);
+                // Use more specific parameters for exact address matching
+                const url = 'https://nominatim.openstreetmap.org/search?format=json&q=' + encodedAddress + 
+                           '&limit=10&addressdetails=1&extratags=1&countrycodes=us';
+                
+                console.log('🌐 Geocoding URL:', url);
+                
+                const response = await fetch(url);
+                if (!response.ok) {
+                    console.log('Geocoding request failed:', response.status);
+                    return null;
+                }
+                
+                const data = await response.json();
+                console.log('Geocoding results for "' + address + '":', data.length, 'results');
+                
+                if (data && data.length > 0) {
+                    // For exact address matching, prioritize results with high accuracy
+                    const bestMatch = findBestAddressMatch(data, address, college);
+                    if (bestMatch) {
+                        console.log('📍 Selected result:', bestMatch.display_name);
+                        console.log('📍 Result details:', {
+                            class: bestMatch.class,
+                            type: bestMatch.type,
+                            importance: bestMatch.importance,
+                            place_rank: bestMatch.place_rank
+                        });
+                        return {
+                            lat: parseFloat(bestMatch.lat),
+                            lng: parseFloat(bestMatch.lon)
+                        };
+                    }
+                }
+                
+                return null;
+            } catch (error) {
+                console.log('Geocoding error:', error);
+                return null;
+            }
+        }
+
+        function findBestAddressMatch(results, originalAddress, college) {
+            const addressLower = originalAddress.toLowerCase();
+            const collegeNameLower = college.name.toLowerCase();
+            
+            console.log('🔍 Analyzing ' + results.length + ' geocoding results for: ' + originalAddress);
+            
+            // Extract street address from the original query for exact matching
+            const streetAddressParts = [];
+            if (college.streetAddress) {
+                // Extract key parts of the street address
+                const streetWords = college.streetAddress.toLowerCase().split(/\s+/);
+                streetWords.forEach(word => {
+                    if (word && word.length > 2 && !['st', 'ave', 'rd', 'dr', 'ln', 'blvd', 'way'].includes(word)) {
+                        streetAddressParts.push(word);
+                    }
+                });
+            }
+            
+            console.log('🏠 Looking for street address parts:', streetAddressParts);
+            
+            // Score each result based on how well it matches
+            const scoredResults = results.map((result, index) => {
+                const displayName = (result.display_name || '').toLowerCase();
+                let score = 0;
+                
+                // MASSIVE PENALTY for light rail stations when looking for buildings
+                if (result.class === 'railway' && result.type === 'station') {
+                    score -= 200;
+                    console.log('🚫 Result ' + index + ': MASSIVE PENALTY - Light rail station (not a building!)');
+                }
+                
+                // SPECIAL BOOST for specific buildings we're looking for
+                if (originalAddress.toLowerCase().includes('student services')) {
+                    if (displayName.includes('student') && displayName.includes('services')) {
+                        score += 150;
+                        console.log('🎯 Result ' + index + ': SPECIAL - Student Services building match!');
+                    }
+                }
+                
+                // HIGHEST PRIORITY: Exact street number and street name match
+                let streetAddressMatch = 0;
+                streetAddressParts.forEach(part => {
+                    if (displayName.includes(part)) {
+                        streetAddressMatch += 50;
+                        console.log('✅ Result ' + index + ': Street address part "' + part + '" found');
+                    }
+                });
+                score += streetAddressMatch;
+                
+                // VERY HIGH PRIORITY: Building/place name that's NOT just the university
+                if (result.class === 'building' || result.class === 'place') {
+                    score += 40;
+                    console.log('✅ Result ' + index + ': Building/place type bonus');
+                }
+                
+                // SPECIAL: If it's a named building (not just a university)
+                if (displayName.includes('building') || displayName.includes('center') || displayName.includes('hall') || displayName.includes('services')) {
+                    score += 60;
+                    console.log('✅ Result ' + index + ': Named building bonus');
+                }
+                
+                // HIGH PRIORITY: Contains street address elements
+                if (college.streetAddress) {
+                    const streetLower = college.streetAddress.toLowerCase();
+                    // Look for street number
+                    const streetNumber = college.streetAddress.match(/^\d+/);
+                    if (streetNumber && displayName.includes(streetNumber[0])) {
+                        score += 60;
+                        console.log('✅ Result ' + index + ': Street number ' + streetNumber[0] + ' found');
+                    }
+                    
+                    // Look for street name parts (Forest, Central, Chaparral, etc.)
+                    if (streetLower.includes('forest') && displayName.includes('forest')) {
+                        score += 40;
+                        console.log('✅ Result ' + index + ': Street name "forest" match');
+                    }
+                    if (streetLower.includes('central') && displayName.includes('central')) {
+                        score += 40;
+                        console.log('✅ Result ' + index + ': Street name "central" match');
+                    }
+                    if (streetLower.includes('chaparral') && displayName.includes('chaparral')) {
+                        score += 40;
+                        console.log('✅ Result ' + index + ': Street name "chaparral" match');
+                    }
+                    if (streetLower.includes('thunderbird') && displayName.includes('thunderbird')) {
+                        score += 40;
+                        console.log('✅ Result ' + index + ': Street name "thunderbird" match');
+                    }
+                }
+                
+                // MEDIUM PRIORITY: City match
+                if (college.city || college.addressCity) {
+                    const cityLower = (college.city || college.addressCity || '').toLowerCase();
+                    if (displayName.includes(cityLower)) {
+                        score += 30;
+                        console.log('✅ Result ' + index + ': City match found');
+                    }
+                }
+                
+                // MEDIUM PRIORITY: State match  
+                if (college.state && displayName.includes(college.state.toLowerCase())) {
+                    score += 20;
+                    console.log('✅ Result ' + index + ': State match found');
+                }
+                
+                // LOWER PRIORITY: College name match (we want the building, not just the campus)
+                if (displayName.includes(collegeNameLower) || displayName.includes('arizona state')) {
+                    // But distinguish between specific buildings and general campus
+                    if (displayName.includes('building') || displayName.includes('center') || displayName.includes('hall') || displayName.includes('services')) {
+                        score += 25; // Specific building with college name
+                        console.log('✅ Result ' + index + ': Specific building with college name');
+                    } else {
+                        // PENALIZE general campus results for ASU
+                        if (displayName.includes('arizona state university') && !displayName.includes('building') && !displayName.includes('center')) {
+                            score -= 30; // PENALTY for general campus
+                            console.log('⚠️ Result ' + index + ': PENALTY - General ASU campus (we want specific building)');
+                        } else {
+                            score += 10; // General campus (lower priority)
+                            console.log('⚠️ Result ' + index + ': General campus match (lower priority)');
+                        }
+                    }
+                }
+                
+                // BONUS: Higher importance from OpenStreetMap (but reduced weight)
+                if (result.importance) {
+                    score += Math.round(result.importance * 5); // Reduced weight
+                }
+                
+                // BONUS: Educational institution (but not as high as street address)
+                if (result.class === 'amenity' && (result.type === 'university' || result.type === 'college' || result.type === 'school')) {
+                    // Only bonus if it also has address components OR is a specific building
+                    if (streetAddressMatch > 0 || displayName.includes('building') || displayName.includes('center')) {
+                        score += 15;
+                        console.log('✅ Result ' + index + ': Educational institution with specificity');
+                    } else {
+                        score -= 10; // PENALTY for general educational institution without specificity
+                        console.log('⚠️ Result ' + index + ': PENALTY - General educational institution');
+                    }
+                }
+                
+                console.log('📊 Result ' + index + ' score: ' + score + ' - ' + result.display_name.substring(0, 100));
+                
+                return {
+                    result: result,
+                    score: score,
+                    index: index
+                };
+            });
+            
+            // Sort by score and return the best match
+            scoredResults.sort((a, b) => b.score - a.score);
+            
+            console.log('🏆 Best match: Score ' + scoredResults[0].score + ' - ' + scoredResults[0].result.display_name);
+            
+            // Only return results with decent scores
+            if (scoredResults[0].score >= 20) {
+                return scoredResults[0].result;
+            }
+            
+            console.log('⚠️ No good address match found, highest score was only ' + scoredResults[0].score);
+            return null;
+        }
+
+        function useFallbackCoordinates(college) {
+            // Try city coordinates first
+            const city = college.city || college.addressCity || '';
+            if (cityCoordinates[city]) {
+                college.lat = cityCoordinates[city][0];
+                college.lng = cityCoordinates[city][1];
+                college.geocodingSource = 'City coordinates: ' + city;
+                console.log('📍 Using city coordinates for ' + college.name + ': ' + college.lat + ', ' + college.lng);
+                return;
+            }
+            
+            // Fall back to state coordinates
+            const stateCode = college.state || college.district.split('-')[0] || 'CA';
+            const stateCoords = stateCoordinates[stateCode] || [39.8283, -98.5795];
+            college.lat = stateCoords[0] + (Math.random() - 0.5) * 0.1;
+            college.lng = stateCoords[1] + (Math.random() - 0.5) * 0.1;
+            college.geocodingSource = 'State default: ' + stateCode;
+            console.log('🌐 Using state default for ' + college.name + ': ' + college.lat + ', ' + college.lng);
+        }
+
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        function parseCSVLine(line) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            let i = 0;
+
+            while (i < line.length) {
+                const char = line[i];
+                
+                if (char === '"') {
+                    if (inQuotes && line[i + 1] === '"') {
+                        current += '"';
+                        i += 2;
+                        continue;
+                    } else {
+                        inQuotes = !inQuotes;
+                    }
+                } else if (char === ',' && !inQuotes) {
+                    result.push(current.trim());
+                    current = '';
+                } else {
+                    current += char;
+                }
+                i++;
+            }
+            
+            result.push(current.trim());
+            return result.map(function(item) {
+                return item.replace(/^"|"$/g, '');
+            });
+        }
+
+        function updateStats(colleges) {
+            const total = colleges.length;
+            const highSuitability = colleges.filter(function(c) {
+                return c.suitability === 'High';
+            }).length;
+            const totalEnrollment = colleges.reduce(function(sum, c) {
+                return sum + c.enrollment;
+            }, 0);
+
+            document.getElementById('totalColleges').textContent = total;
+            document.getElementById('highSuitability').textContent = highSuitability;
+            document.getElementById('totalEnrollment').textContent = totalEnrollment.toLocaleString();
+        }
+
+        function initializeMap() {
+            if (map) {
+                map.remove();
+            }
+
+            setTimeout(function() {
+                map = L.map('map').setView([39.8283, -98.5795], 4);
+                
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors',
+                    maxZoom: 18
+                }).addTo(map);
+
+                // Set up location button functionality
+                setupLocationButton();
+
+                setTimeout(function() {
+                    if (map) {
+                        map.invalidateSize();
+                    }
+                }, 100);
+            }, 50);
+        }
+
+        function setupLocationButton() {
+            const locationBtn = document.getElementById('locationBtn');
+            const districtToggleBtn = document.getElementById('districtToggleBtn');
+            
+            if (locationBtn) {
+                locationBtn.addEventListener('click', findUserLocation);
+            }
+            
+            if (districtToggleBtn) {
+                districtToggleBtn.addEventListener('click', toggleDistrictBoundaries);
+                // Set initial state
+                updateDistrictToggleButton();
+            }
+        }
+
+        function toggleDistrictBoundaries() {
+            districtBoundariesVisible = !districtBoundariesVisible;
+            
+            if (districtBoundariesVisible) {
+                // Show boundaries
+                if (districtBoundaries && currentSelectedDistrict) {
+                    addDistrictBoundariesToMap(currentSelectedDistrict);
+                }
+            } else {
+                // Hide boundaries
+                if (map.districtLayer) {
+                    map.removeLayer(map.districtLayer);
+                }
+            }
+            
+            updateDistrictToggleButton();
+            console.log('📍 District boundaries', districtBoundariesVisible ? 'shown' : 'hidden');
+        }
+
+        function updateDistrictToggleButton() {
+            const districtToggleBtn = document.getElementById('districtToggleBtn');
+            if (districtToggleBtn) {
+                if (districtBoundariesVisible) {
+                    districtToggleBtn.classList.add('active');
+                    districtToggleBtn.innerHTML = '🗺️ Districts';
+                    districtToggleBtn.title = 'Hide district boundaries';
+                } else {
+                    districtToggleBtn.classList.remove('active');
+                    districtToggleBtn.innerHTML = '🗺️ Districts';
+                    districtToggleBtn.title = 'Show district boundaries';
+                }
+            }
+        }
+
+        function findUserLocation() {
+            const locationBtn = document.getElementById('locationBtn');
+            
+            if (!navigator.geolocation) {
+                alert('Geolocation is not supported by your browser');
+                return;
+            }
+
+            // Show loading state with spinning custom icon
+            locationBtn.classList.add('loading');
+            locationBtn.innerHTML = '<img src="images/icons8-my-location-50.png" style="width: 28px; height: 28px; animation: spin 1s linear infinite;" alt="Finding location">';
+            
+            console.log('🗺️ Requesting user location...');
+
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    const accuracy = position.coords.accuracy;
+
+                    console.log('✅ User location found:', lat, lng, 'accuracy:', accuracy + 'm');
+
+                    // Remove previous user location marker
+                    if (userLocationMarker) {
+                        map.removeLayer(userLocationMarker);
+                    }
+
+                    // Create user location marker with accuracy circle
+                    const locationIcon = L.divIcon({
+                        className: 'user-location-marker',
+                        html: '<div style="background: #4285f4; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>',
+                        iconSize: [16, 16],
+                        iconAnchor: [8, 8]
+                    });
+
+                    userLocationMarker = L.marker([lat, lng], { icon: locationIcon }).addTo(map);
+                    
+                    // Add accuracy circle
+                    const accuracyCircle = L.circle([lat, lng], {
+                        radius: accuracy,
+                        color: '#4285f4',
+                        fillColor: '#4285f4',
+                        fillOpacity: 0.1,
+                        weight: 1
+                    }).addTo(map);
+
+                    // Group them together
+                    const userLocationGroup = L.featureGroup([userLocationMarker, accuracyCircle]);
+                    
+                    // Zoom to user location
+                    map.setView([lat, lng], 12);
+
+                    // Add popup
+                    userLocationMarker.bindPopup('<div style="text-align: center;"><strong>📍 Your Location</strong><br>Accuracy: ±' + Math.round(accuracy) + ' meters</div>');
+
+                    // Reset button with custom icon
+                    locationBtn.classList.remove('loading');
+                    locationBtn.innerHTML = '<img src="images/icons8-my-location-50.png" style="width: 28px; height: 28px;" alt="Find location">';
+
+                    console.log('🎯 User location displayed on map');
+                },
+                function(error) {
+                    console.log('❌ Geolocation error:', error.message);
+                    
+                    let errorMessage = 'Unable to get your location. ';
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMessage += 'Permission denied. Please enable location access.';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMessage += 'Location information unavailable.';
+                            break;
+                        case error.TIMEOUT:
+                            errorMessage += 'Location request timed out.';
+                            break;
+                        default:
+                            errorMessage += 'An unknown error occurred.';
+                    }
+                    
+                    alert(errorMessage);
+                    
+                    // Reset button with custom icon
+                    locationBtn.classList.remove('loading');
+                    locationBtn.innerHTML = '<img src="images/icons8-my-location-50.png" style="width: 28px; height: 28px;" alt="Find location">';
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 300000 // 5 minutes
+                }
+            );
+        }
+
+        function addMarkersToMap(colleges) {
+            clearMarkers();
+            
+            if (colleges.length === 0 || !map) return;
+
+            const group = new L.featureGroup();
+
+            colleges.forEach(function(college) {
+                if (!college.lat || !college.lng) {
+                    console.log('Skipping college without coordinates:', college.name);
+                    return;
+                }
+
+                const iconColor = getSuitabilityColor(college.suitability);
+                
+                // Create a more prominent marker for better visibility
+                const marker = L.marker([college.lat, college.lng], {
+                    icon: L.divIcon({
+                        className: 'custom-marker',
+                        html: '<div style="background-color: ' + iconColor + '; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 3px 6px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 12px;">📍</div>',
+                        iconSize: [24, 24],
+                        iconAnchor: [12, 12]
+                    })
+                });
+
+                const popupContent = createPopupContent(college);
+                marker.bindPopup(popupContent, { maxWidth: 400 });
+                
+                marker.addTo(map);
+                group.addLayer(marker);
+                markers.push(marker);
+                
+                console.log('📍 Added marker for ' + college.name + ' at: ' + college.lat + ', ' + college.lng);
+            });
+
+            if (group.getLayers().length > 0) {
+                // Fit bounds with more padding for better view
+                map.fitBounds(group.getBounds(), { padding: [50, 50] });
+                
+                // Log the bounds for debugging
+                const bounds = group.getBounds();
+                console.log('🗺️ Map bounds:', bounds);
+                console.log('🗺️ Map center will be approximately:', bounds.getCenter());
+            }
+        }
+
+        function getSuitabilityColor(suitability) {
+            switch (suitability) {
+                case 'High': return '#28a745';
+                case 'Medium': return '#ffc107';
+                case 'Low': return '#dc3545';
+                default: return '#6c757d';
+            }
+        }
+
+        function createPopupContent(college) {
+            return '<div style="max-width: 350px;">' +
+                '<div style="font-weight: bold; margin-bottom: 8px; color: #333; font-size: 1.1rem;">' + college.name + '</div>' +
+                '<div style="margin-bottom: 4px; font-size: 0.9rem;"><strong>Type:</strong> ' + college.type + '</div>' +
+                '<div style="margin-bottom: 4px; font-size: 0.9rem;"><strong>Enrollment:</strong> ' + college.enrollment.toLocaleString() + '</div>' +
+                '<div style="margin-bottom: 4px; font-size: 0.9rem;"><strong>Suitability:</strong> ' + college.suitability + '</div>' +
+                '<div style="margin-top: 10px;">' +
+                    '<a href="https://www.google.com/maps/search/' + encodeURIComponent((college.address || college.name) + ', ' + (college.city || '')) + '" target="_blank" style="color: #667eea; text-decoration: none; font-size: 0.9rem;">🗺️ View on Google Maps</a>' +
+                '</div>' +
+                '</div>';
+        }
+
+        function clearMarkers() {
+            markers.forEach(function(marker) {
+                if (map) {
+                    map.removeLayer(marker);
+                }
+            });
+            markers = [];
+        }
+
+        function displayCollegeListWithSections(district, withinColleges, nearColleges) {
+            const container = document.getElementById('collegeItems');
+            container.innerHTML = '';
+
+            if (withinColleges.length > 0) {
+                const withinSection = document.createElement('div');
+                withinSection.innerHTML = '<h2 style="margin-bottom: 20px; color: #333; border-bottom: 2px solid #667eea; padding-bottom: 10px;">COLLEGES IN ' + district + '</h2>';
+                container.appendChild(withinSection);
+
+                withinColleges.forEach(function(college) {
+                    const collegeElement = createCollegeElement(college);
+                    container.appendChild(collegeElement);
+                });
+            }
+
+            if (nearColleges.length > 0) {
+                const nearSection = document.createElement('div');
+                nearSection.innerHTML = '<h2 style="margin: 40px 0 20px 0; color: #333; border-bottom: 2px solid #764ba2; padding-bottom: 10px;">COLLEGES NEAR ' + district + '</h2>';
+                container.appendChild(nearSection);
+
+                nearColleges.forEach(function(college) {
+                    const collegeElement = createCollegeElement(college, true);
+                    container.appendChild(collegeElement);
+                });
+            }
+        }
+
+        function createCollegeElement(college, showDistance) {
+            const div = document.createElement('div');
+            div.className = 'college-item';
+            
+            const addressDisplay = college.streetAddress ? 
+                college.streetAddress + '<br>' + (college.city || college.addressCity || '') + ', ' + (college.state || '') + ' ' + (college.zipCode || '') :
+                (college.address || 'Address not available');
+            
+            div.innerHTML = '<div class="college-name">' + college.name + '</div>' +
+                '<div class="college-details">' +
+                    '<div class="detail-item">' +
+                        '<div class="detail-label">Address</div>' +
+                        '<div class="detail-value">' + addressDisplay + '</div>' +
+                    '</div>' +
+                    '<div class="detail-item">' +
+                        '<div class="detail-label">Type</div>' +
+                        '<div class="detail-value">' + college.type + ' (' + college.publicPrivate + ')</div>' +
+                    '</div>' +
+                    '<div class="detail-item">' +
+                        '<div class="detail-label">Enrollment</div>' +
+                        '<div class="detail-value">' + college.enrollment.toLocaleString() + '</div>' +
+                    '</div>' +
+                    '<div class="detail-item">' +
+                        '<div class="detail-label">Voter Drive Suitability</div>' +
+                        '<div class="detail-value">' +
+                            '<span class="suitability-badge suitability-' + college.suitability.toLowerCase() + '">' + college.suitability + '</span>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="college-actions">' +
+                    '<a href="https://www.google.com/maps/search/' + encodeURIComponent((college.streetAddress || college.address || college.name) + ', ' + (college.city || college.addressCity || '') + ', ' + (college.state || '')) + '" target="_blank" class="btn btn-primary">🗺️ Get Directions</a>' +
+                    (college.website ? '<a href="https://' + college.website + '" target="_blank" class="btn btn-secondary">🌐 Visit Website</a>' : '') +
+                    '<button class="btn btn-secondary" onclick="focusOnCollege(' + college.lat + ', ' + college.lng + ')">📍 Show on Map</button>' +
+                '</div>';
+
+            return div;
+        }
+
+        function focusOnCollege(lat, lng) {
+            if (map && lat && lng) {
+                console.log('Focusing on college at: ' + lat + ', ' + lng);
+                map.setView([lat, lng], 16);
+                
+                markers.forEach(function(marker) {
+                    const markerLatLng = marker.getLatLng();
+                    if (Math.abs(markerLatLng.lat - lat) < 0.0001 && Math.abs(markerLatLng.lng - lng) < 0.0001) {
+                        marker.openPopup();
+                    }
+                });
+            }
+        }
+
+        function showNoData(state, district) {
+            document.getElementById('collegeItems').innerHTML = 
+                '<div class="no-data">' +
+                    '<h3>Ready for ' + district + ' data</h3>' +
+                    '<p><strong>To add your data:</strong></p>' +
+                    '<ol style="text-align: left; max-width: 500px; margin: 20px auto;">' +
+                        '<li>Export the <strong>' + district + '</strong> tab from your Google Sheet as CSV</li>' +
+                        '<li>Name the file <strong>' + district + '.csv</strong> (or <strong>' + district.replace('-', '') + '.csv</strong>)</li>' +
+                        '<li>Upload it to a <strong>data/</strong> folder on your website</li>' +
+                        '<li>The app will automatically load it!</li>' +
+                    '</ol>' +
+                    '<p style="margin-top: 20px;"><em>This district is mapped but waiting for CSV data.</em></p>' +
+                '</div>';
+            document.getElementById('collegeList').style.display = 'block';
+        }
+
+        // Initialize the app when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, initializing app...');
+            setTimeout(function() {
+                init();
+            }, 100);
+        });
         // Hide districts function
         function hideClosestDistricts() {
             console.log('🙈 Hide button clicked!');
@@ -1086,17 +2957,6 @@
                 console.log('❌ Container not found!');
             }
         }
-
-        // [REST OF THE JAVASCRIPT CONTINUES WITH ALL THE OTHER FUNCTIONS...]
-        // District mappings, college functions, map functions, etc. - keeping the rest exactly as it was in v33
-        
-        // Initialize the app when the page loads
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM loaded, initializing app...');
-            setTimeout(function() {
-                init();
-            }, 100);
-        });
     </script>
 </body>
 </html>

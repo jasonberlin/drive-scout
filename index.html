@@ -19,6 +19,17 @@
             box-sizing: border-box;
         }
 
+        function hideClosestDistricts() {
+            const container = document.getElementById('closestDistricts');
+            container.style.display = 'none';
+            container.innerHTML = '';
+            
+            // Clear the stored distances
+            window.allDistrictDistances = null;
+            
+            console.log('🙈 Districts hidden');
+        }
+
         body {
             font-family: 'raleway-v2', 'Raleway', sans-serif;
             font-style: normal;
@@ -953,6 +964,13 @@
                 html += '</div>';
             }
             
+            // Add "Hide districts" button
+            html += '<div style="text-align: center; margin: 10px 0;">';
+            html += '<button onclick="hideClosestDistricts()" style="background: #6c757d; color: white; padding: 10px 20px; border: none; border-radius: 8px; font-size: 0.9rem; cursor: pointer; font-weight: bold; transition: all 0.3s ease;">';
+            html += '🙈 Hide districts';
+            html += '</button>';
+            html += '</div>';
+            
             html += '</div>';
             
             // Store all distances for the "show more" functionality
@@ -1030,6 +1048,13 @@
                 html += '</button>';
                 html += '</div>';
             }
+            
+            // Add "Hide districts" button
+            html += '<div style="text-align: center; margin: 10px 0;">';
+            html += '<button onclick="hideClosestDistricts()" style="background: #6c757d; color: white; padding: 10px 20px; border: none; border-radius: 8px; font-size: 0.9rem; cursor: pointer; font-weight: bold; transition: all 0.3s ease;">';
+            html += '🙈 Hide districts';
+            html += '</button>';
+            html += '</div>';
             
             html += '</div>';
             

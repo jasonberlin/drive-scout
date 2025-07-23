@@ -14,7 +14,8 @@ exports.handler = async (event, context) => {
   try {
     console.log('🔍 Fetching Field Team 6 events from Mobilize...');
     
-    const mobilizeUrl = 'https://api.mobilize.us/v1/organizations/ft6/events?tag_ids=20036&timeslot_start=gte_now&per_page=50';
+    // Fetch all current events, then filter by "Drive" tag
+    const mobilizeUrl = 'https://api.mobilize.us/v1/organizations/ft6/events?timeslot_start=gte_now&per_page=100';
     
     const response = await fetch(mobilizeUrl, {
       headers: {
@@ -34,21 +35,28 @@ exports.handler = async (event, context) => {
     
     if (data.data && Array.isArray(data.data)) {
       data.data.forEach((event, index) => {
-        console.log(`🔍 Processing event ${index + 1}: ${event.title || 'Untitled'}`);
+        // Check if event has "Drive" tag
+        const hasDriveTag = event.tags && event.tags.some(tag => 
+          tag.name && tag.name.toLowerCase() === 'drive'
+        );
+        
+        if (!hasDriveTag) {
+          return; // Skip events without Drive tag
+        }
+        
+        console.log(`🚗 Found Drive event: ${event.title || 'Untitled'}`);
         
         if (!event.location || !event.timeslots || event.timeslots.length === 0) {
-          console.log(`⚠️ Skipping event ${index + 1}: Missing location or timeslots`);
+          console.log(`⚠️ Skipping drive event: Missing location or timeslots`);
           return;
         }
 
         const location = event.location;
         const firstTimeslot = event.timeslots[0];
         
-        console.log(`📍 Event location: ${location.locality}, ${location.region}`);
+        console.log(`📍 Drive location: ${location.locality}, ${location.region}`);
         
-        // Simple state-based district assignment + coordinates for distance calc
         const district = getDistrictFromState(location.region);
-        console.log(`🗳️ Determined district: ${district}`);
         
         const processedEvent = {
           id: event.id,
@@ -66,17 +74,17 @@ exports.handler = async (event, context) => {
             [parseFloat(location.latitude), parseFloat(location.longitude)] : null,
           mobilizeUrl: `https://www.mobilize.us/ft6/event/${event.id}/`,
           isVirtual: location.venue && location.venue.toLowerCase().includes('virtual'),
-          tags: event.tags || []
+          tags: event.tags ? event.tags.map(tag => tag.name) : []
         };
 
         if (processedEvent.date && (processedEvent.coordinates || processedEvent.city)) {
           processedEvents.push(processedEvent);
-          console.log(`✅ Added event: ${processedEvent.title} in ${processedEvent.district}`);
+          console.log(`✅ Added drive: ${processedEvent.title} in ${processedEvent.district}`);
         }
       });
     }
 
-    console.log(`📊 Processed ${processedEvents.length} valid events total`);
+    console.log(`📊 Processed ${processedEvents.length} voter drive events`);
 
     return {
       statusCode: 200,
@@ -109,7 +117,6 @@ function getDistrictFromState(region) {
   
   const state = region.toUpperCase().trim();
   
-  // Simple state-based assignment - let the frontend handle distance filtering
   switch (state) {
     case 'AK': case 'ALASKA': return 'AK-AL';
     case 'AZ': case 'ARIZONA': return 'AZ-??';

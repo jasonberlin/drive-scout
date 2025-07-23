@@ -2961,6 +2961,259 @@
                 console.log('❌ Container not found!');
             }
         }
+        // Real-time upcoming drives data from Mobilize
+        let upcomingDrivesCache = [];
+        let lastFetchTime = 0;
+        const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+        async function fetchUpcomingDrives() {
+            // Use cache if it's fresh
+            const now = Date.now();
+            if (upcomingDrivesCache.length > 0 && (now - lastFetchTime) < CACHE_DURATION) {
+                console.log('📦 Using cached drives data');
+                return upcomingDrivesCache;
+            }
+            
+            try {
+                console.log('🌐 Fetching fresh drives data from Netlify function...');
+                
+                const response = await fetch('/.netlify/functions/get-mobilize-events');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success && data.events) {
+                    upcomingDrivesCache = data.events;
+                    lastFetchTime = now;
+                    console.log('✅ Successfully fetched', data.events.length, 'upcoming drives');
+                    console.log('📅 Data last updated:', data.lastUpdated);
+                    return upcomingDrivesCache;
+                } else {
+                    throw new Error(data.error || 'No events data received');
+                }
+                
+            } catch (error) {
+                console.error('❌ Error fetching drives:', error.message);
+                
+                // Return empty array on error, but show user-friendly message
+                return [];
+            }
+        }
+
+        async function checkUpcomingDrives(selectedDistrict) {
+            console.log('🔍 Checking for upcoming drives in/near district:', selectedDistrict);
+            
+            if (!selectedDistrict || !districtData[selectedDistrict]) {
+                hideUpcomingDrives();
+                return;
+            }
+            
+            // Show loading message
+            showUpcomingDrivesLoading();
+            
+            try {
+                const allDrives = await fetchUpcomingDrives();
+                
+                if (allDrives.length === 0) {
+                    showNoUpcomingDrives();
+                    return;
+                }
+                
+                const districtCenter = districtData[selectedDistrict].center;
+                const nearbyDrives = [];
+                
+                // Check each drive
+                allDrives.forEach(drive => {
+                    // Skip virtual events unless they specify a district
+                    if (drive.isVirtual && !drive.district.includes(selectedDistrict.split('-')[0])) {
+                        return;
+                    }
+                    
+                    // Include drives in the same district
+                    if (drive.district === selectedDistrict) {
+                        nearbyDrives.push({...drive, distance: 0, matchType: 'exact'});
+                        console.log('✅ Found drive in same district:', drive.title);
+                    }
+                    // Include drives in the same state with unknown district
+                    else if (drive.district.startsWith(selectedDistrict.split('-')[0]) && drive.district.includes('??')) {
+                        nearbyDrives.push({...drive, distance: '?', matchType: 'state'});
+                        console.log('✅ Found drive in same state (unknown district):', drive.title);
+                    }
+                    // Include drives within 30 miles of district center
+                    else if (drive.coordinates && districtCenter) {
+                        const distance = calculateDistance(
+                            districtCenter[0], districtCenter[1],
+                            drive.coordinates[0], drive.coordinates[1]
+                        );
+                        
+                        if (distance <= 30) {
+                            nearbyDrives.push({...drive, distance: Math.round(distance), matchType: 'nearby'});
+                            console.log('✅ Found nearby drive (' + Math.round(distance) + ' miles):', drive.title);
+                        }
+                    }
+                });
+                
+                if (nearbyDrives.length > 0) {
+                    // Sort by distance (exact matches first)
+                    nearbyDrives.sort((a, b) => {
+                        if (a.matchType === 'exact' && b.matchType !== 'exact') return -1;
+                        if (b.matchType === 'exact' && a.matchType !== 'exact') return 1;
+                        if (a.distance === '?' || b.distance === '?') return 0;
+                        return a.distance - b.distance;
+                    });
+                    
+                    displayUpcomingDrives(nearbyDrives);
+                } else {
+                    showNoUpcomingDrives();
+                    console.log('ℹ️ No upcoming drives found for', selectedDistrict);
+                }
+                
+            } catch (error) {
+                console.error('❌ Error checking upcoming drives:', error);
+                showUpcomingDrivesError();
+            }
+        }
+
+        function showUpcomingDrivesLoading() {
+            const container = document.getElementById('upcomingDrivesContainer');
+            const drivesList = document.getElementById('upcomingDrivesList');
+            
+            if (!container || !drivesList) return;
+            
+            drivesList.innerHTML = `
+                <div style="text-align: center; padding: 30px; color: #666;">
+                    <div style="width: 30px; height: 30px; border: 3px solid #f3f3f3; border-top: 3px solid #2196f3; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 15px auto;"></div>
+                    <div>Loading upcoming voter drives...</div>
+                </div>
+            `;
+            
+            container.style.display = 'block';
+        }
+
+        function showNoUpcomingDrives() {
+            const container = document.getElementById('upcomingDrivesContainer');
+            const drivesList = document.getElementById('upcomingDrivesList');
+            
+            if (!container || !drivesList) return;
+            
+            drivesList.innerHTML = `
+                <div class="no-upcoming-drives">
+                    <div style="font-size: 2rem; margin-bottom: 10px;">📅</div>
+                    <div>No upcoming Field Team 6 voter drives found in this area.</div>
+                    <div style="margin-top: 10px; font-size: 0.9rem;">
+                        Check back later or <a href="https://www.mobilize.us/ft6/" target="_blank" style="color: #2196f3;">browse all Field Team 6 events</a>.
+                    </div>
+                </div>
+            `;
+            
+            container.style.display = 'block';
+        }
+
+        function showUpcomingDrivesError() {
+            const container = document.getElementById('upcomingDrivesContainer');
+            const drivesList = document.getElementById('upcomingDrivesList');
+            
+            if (!container || !drivesList) return;
+            
+            drivesList.innerHTML = `
+                <div class="no-upcoming-drives">
+                    <div style="font-size: 2rem; margin-bottom: 10px;">⚠️</div>
+                    <div>Unable to load upcoming drives at this time.</div>
+                    <div style="margin-top: 10px; font-size: 0.9rem;">
+                        Please check <a href="https://www.mobilize.us/ft6/" target="_blank" style="color: #2196f3;">Field Team 6 on Mobilize</a> directly.
+                    </div>
+                </div>
+            `;
+            
+            container.style.display = 'block';
+        }
+
+        function displayUpcomingDrives(drives) {
+            const container = document.getElementById('upcomingDrivesContainer');
+            const drivesList = document.getElementById('upcomingDrivesList');
+            
+            if (!container || !drivesList) {
+                console.log('❌ Upcoming drives containers not found');
+                return;
+            }
+            
+            let html = '';
+            
+            drives.forEach(drive => {
+                const date = new Date(drive.date);
+                const formattedDate = date.toLocaleDateString('en-US', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                });
+                
+                const timeDisplay = drive.startTime && drive.endTime ? 
+                    `${drive.startTime} - ${drive.endTime}` : 
+                    (drive.startTime || 'Time TBD');
+                
+                // Distance display
+                let distanceDisplay = '';
+                if (drive.matchType === 'exact') {
+                    distanceDisplay = '<span style="color: #4caf50; font-weight: bold;">In District</span>';
+                } else if (drive.matchType === 'state') {
+                    distanceDisplay = '<span style="color: #ff9800; font-weight: bold;">Same State</span>';
+                } else if (drive.distance && drive.distance !== '?') {
+                    distanceDisplay = `<span style="color: #2196f3;">${drive.distance} miles away</span>`;
+                }
+                
+                html += `
+                    <div class="drive-item">
+                        <div class="drive-title">${drive.title}</div>
+                        <div class="drive-details">
+                            <div class="drive-detail">
+                                <div class="drive-detail-label">Location</div>
+                                <div class="drive-detail-value">${drive.location}</div>
+                            </div>
+                            <div class="drive-detail">
+                                <div class="drive-detail-label">City & District</div>
+                                <div class="drive-detail-value">
+                                    ${drive.city}, ${drive.state}
+                                    <span class="drive-district-badge">${drive.district}</span>
+                                </div>
+                            </div>
+                            <div class="drive-detail">
+                                <div class="drive-detail-label">Date</div>
+                                <div class="drive-detail-value">${formattedDate}</div>
+                            </div>
+                            <div class="drive-detail">
+                                <div class="drive-detail-label">Time</div>
+                                <div class="drive-detail-value">${timeDisplay}</div>
+                            </div>
+                        </div>
+                        ${distanceDisplay ? `<div style="text-align: center; margin-bottom: 12px; font-size: 0.9rem;">${distanceDisplay}</div>` : ''}
+                        <div style="text-align: center;">
+                            <a href="${drive.mobilizeUrl}" target="_blank" 
+                               style="background: #4caf50; color: white; padding: 8px 16px; 
+                                      border-radius: 6px; text-decoration: none; font-weight: bold; 
+                                      font-size: 0.9rem; display: inline-block;">
+                                📝 Sign Up on Mobilize
+                            </a>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            drivesList.innerHTML = html;
+            container.style.display = 'block';
+            
+            console.log('✅ Displayed', drives.length, 'upcoming drives');
+        }
+
+        function hideUpcomingDrives() {
+            const container = document.getElementById('upcomingDrivesContainer');
+            if (container) {
+                container.style.display = 'none';
+            }
+        }
     </script>
 </body>
 </html>

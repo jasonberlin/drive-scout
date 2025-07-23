@@ -3140,7 +3140,7 @@
                             drive.coordinates[0], drive.coordinates[1]
                         );
                         
-                        if (distance <= 30) {
+                        if (distance <= 50) {
                             nearbyDrives.push({...drive, distance: Math.round(distance), matchType: 'nearby'});
                             console.log('✅ Found nearby drive (' + Math.round(distance) + ' miles):', drive.title);
                         }

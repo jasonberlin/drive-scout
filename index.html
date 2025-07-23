@@ -427,6 +427,76 @@
         .cities-list {
             line-height: 1.3;
         }
+
+        .drive-item {
+            background: white;
+            border-radius: 10px;
+            padding: 18px;
+            margin-bottom: 12px;
+            border-left: 4px solid #4caf50;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+        }
+
+        .drive-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .drive-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 1.1rem;
+        }
+
+        .drive-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .drive-detail {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .drive-detail-label {
+            font-size: 0.8rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+        }
+
+        .drive-detail-value {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .drive-district-badge {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .no-upcoming-drives {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-style: italic;
+        }
+
+        @media (max-width: 768px) {
+            .drive-details {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
@@ -497,6 +567,24 @@
                 <button class="location-button" id="locationBtn" title="Find my location">
                     <img src="images/icons8-my-location-50.png" style="width: 28px; height: 28px;" alt="Find location">
                 </button>
+            </div>
+        </div>
+
+        <!-- Upcoming Drives Container -->
+        <div class="upcoming-drives-container" id="upcomingDrivesContainer" style="display: none;">
+            <div style="background: #e3f2fd; border-radius: 15px; padding: 25px; margin-bottom: 25px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); border-left: 5px solid #2196f3;">
+                <h3 style="color: #1976d2; margin-bottom: 20px; font-size: 1.4rem; display: flex; align-items: center; gap: 10px;">
+                    🗳️ Upcoming Field Team 6 Voter Drives in the Area
+                </h3>
+                <div id="upcomingDrivesList">
+                    <!-- Drives will be populated here -->
+                </div>
+                <div style="margin-top: 15px; text-align: center;">
+                    <a href="https://www.mobilize.us/ft6/?per_page=25&show_all_events=true&tag_ids=20036" target="_blank" 
+                       style="color: #1976d2; text-decoration: none; font-weight: bold; font-size: 0.9rem;">
+                        📅 View all Field Team 6 events on Mobilize →
+                    </a>
+                </div>
             </div>
         </div>
 
@@ -1324,6 +1412,7 @@
                 }, 200);
                 
                 displayCollegeListWithSections(district, withinColleges, nearColleges);
+                checkUpcomingDrives(district);
             }
         }
 
@@ -2943,6 +3032,7 @@
                 init();
             }, 100);
         });
+
         // Hide districts function
         function hideClosestDistricts() {
             console.log('🙈 Hide button clicked!');
@@ -2961,6 +3051,7 @@
                 console.log('❌ Container not found!');
             }
         }
+
         // Real-time upcoming drives data from Mobilize
         let upcomingDrivesCache = [];
         let lastFetchTime = 0;

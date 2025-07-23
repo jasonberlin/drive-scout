@@ -1015,18 +1015,25 @@
                 html += '<div style="text-align: center; margin: 20px 0;">';
                 html += '<button onclick="showMoreDistricts(' + initialCount + ')" style="background: #667eea; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; font-weight: bold; transition: all 0.3s ease;">';
                 html += '📍 Show me ' + remainingCount + ' more districts';
-          html += '</button>';
+                html += '</button>';
+                html += '</div>';
+            }
+            
+            // Add "Hide districts" button
+            html += '<div style="text-align: center; margin: 10px 0;">';
+            html += '<button onclick="hideClosestDistricts()" style="background: #6c757d; color: white; padding: 10px 20px; border: none; border-radius: 8px; font-size: 0.9rem; cursor: pointer; font-weight: bold; transition: all 0.3s ease;">';
+            html += '🙈 Hide districts';
+            html += '</button>';
             html += '</div>';
-        }
-        
-        // Add "Hide districts" button
-        html += '<div style="text-align: center; margin: 10px 0;">';
-        html += '<button onclick="hideClosestDistricts()" style="background: #6c757d; color: white; padding: 10px 20px; border: none; border-radius: 8px; font-size: 0.9rem; cursor: pointer; font-weight: bold; transition: all 0.3s ease;">';
-        html += '🙈 Hide districts';
-        html += '</button>';
-        html += '</div>';
-        
-        html += '</div>';
+            
+            // Add "Hide districts" button
+            html += '<div style="text-align: center; margin: 10px 0;">';
+            html += '<button onclick="hideClosestDistricts()" style="background: #6c757d; color: white; padding: 10px 20px; border: none; border-radius: 8px; font-size: 0.9rem; cursor: pointer; font-weight: bold; transition: all 0.3s ease;">';
+            html += '🙈 Hide districts';
+            html += '</button>';
+            html += '</div>';
+            
+            html += '</div>';
             
             // Store all distances for the "show more" functionality
             window.allDistrictDistances = allDistances;
@@ -1163,13 +1170,6 @@
                 html += '<div style="line-height: 1.3;">' + district.cities.join(', ') + '</div>';
                 html += '</div>';
             }
-            
-            // Add "Hide districts" button
-            html += '<div style="text-align: center; margin: 10px 0;">';
-            html += '<button onclick="hideClosestDistricts()" style="background: #6c757d; color: white; padding: 10px 20px; border: none; border-radius: 8px; font-size: 0.9rem; cursor: pointer; font-weight: bold; transition: all 0.3s ease;">';
-            html += '🙈 Hide districts';
-            html += '</button>';
-            html += '</div>';
             
             html += '</div>';
             
@@ -2980,43 +2980,6 @@
                 init();
             }, 100);
         });
-
-        // Hide districts function - added at the end to avoid syntax issues
-        function hideClosestDistricts() {
-            console.log('🙈 Hide button clicked!');
-            const container = document.getElementById('closestDistricts');
-            
-            if (container) {
-                console.log('✅ Container found, hiding it');
-                container.style.display = 'none';
-                container.innerHTML = '';
-                
-                // Clear the stored distances
-                window.allDistrictDistances = null;
-                
-                console.log('🙈 Districts hidden successfully');
-            } else {
-                console.log('❌ Container not found!');
-            }
-        }
-    // Hide districts function
-        function hideClosestDistricts() {
-            console.log('🙈 Hide button clicked!');
-            const container = document.getElementById('closestDistricts');
-            
-            if (container) {
-                console.log('✅ Container found, hiding it');
-                container.style.display = 'none';
-                container.innerHTML = '';
-                
-                // Clear the stored distances
-                window.allDistrictDistances = null;
-                
-                console.log('🙈 Districts hidden successfully');
-            } else {
-                console.log('❌ Container not found!');
-            }
-        }
     </script>
 </body>
 </html>

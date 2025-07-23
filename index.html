@@ -972,8 +972,8 @@
         }
 
         function createDistrictCard(district) {
-            // Set background color based on current representative's party
-            const cardBackground = district.party === 'D' ? 'rgba(173, 216, 230, 0.3)' : 'rgba(255, 182, 193, 0.3)'; // Pale blue for Dem, pale pink for Rep
+            // Set background color based on current representative's party - lighter colors for better readability
+            const cardBackground = district.party === 'D' ? 'rgba(173, 216, 230, 0.15)' : 'rgba(255, 182, 193, 0.15)'; // Much lighter blue/pink
             const borderColor = district.party === 'D' ? '#4169E1' : '#DC143C'; // Blue for Dem, red for Rep
             
             let html = '<div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 15px; margin: 10px 0; background: ' + cardBackground + '; border-radius: 10px; border-left: 5px solid ' + borderColor + '; box-shadow: 0 2px 10px rgba(0,0,0,0.05); transition: all 0.3s ease;">';

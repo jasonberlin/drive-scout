@@ -1,5 +1,4 @@
 exports.handler = async (event, context) => {
-  // Simple CORS headers
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
@@ -7,80 +6,97 @@ exports.handler = async (event, context) => {
     'Content-Type': 'application/json'
   };
 
-  // Handle preflight
   if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers,
-      body: ''
-    };
+    return { statusCode: 200, headers, body: '' };
   }
 
   try {
-    console.log('Starting function...');
+    console.log('Testing different API endpoints...');
     
-    // Test if basic fetch works first
-    const mobilizeUrl = 'https://api.mobilize.us/v1/organizations/ft6/events?timeslot_start=gte_now&per_page=20';
+    // Test different possible endpoints
+    const endpointsToTry = [
+      'https://api.mobilize.us/v1/organizations/ft6/events',
+      'https://api.mobilize.us/v1/organizations/fieldteam6/events', 
+      'https://api.mobilize.us/v1/organizations/field-team-6/events',
+      'https://api.mobilize.us/v1/events?organization_id=ft6',
+      'https://api.mobilize.us/v1/events?organization=ft6'
+    ];
     
-    console.log('Making request to:', mobilizeUrl);
+    const results = [];
     
-    const response = await fetch(mobilizeUrl);
-    
-    console.log('Response status:', response.status);
-    
-    if (!response.ok) {
-      throw new Error(`API returned ${response.status}`);
-    }
-
-    const data = await response.json();
-    console.log('Got data, events count:', data.data ? data.data.length : 0);
-    
-    // Very simple processing - just return first few events as-is for testing
-    const events = [];
-    
-    if (data.data && Array.isArray(data.data)) {
-      // Take first 5 events and process minimally
-      data.data.slice(0, 5).forEach(event => {
-        if (event.location && event.timeslots && event.timeslots.length > 0) {
-          events.push({
-            id: event.id,
-            title: event.title || 'Event',
-            city: event.location.locality || 'Unknown',
-            state: event.location.region || 'Unknown',
-            district: 'TEST-??',
-            date: event.timeslots[0].start_date ? event.timeslots[0].start_date.split('T')[0] : null,
-            coordinates: event.location.latitude && event.location.longitude ? 
-              [parseFloat(event.location.latitude), parseFloat(event.location.longitude)] : null,
-            mobilizeUrl: `https://www.mobilize.us/ft6/event/${event.id}/`,
-            tags: event.tags ? event.tags.map(tag => tag.name || 'unnamed') : []
+    for (const url of endpointsToTry) {
+      try {
+        console.log(`Testing: ${url}`);
+        
+        const response = await fetch(url, {
+          headers: {
+            'User-Agent': 'Drive-Scout-App/1.0',
+            'Accept': 'application/json'
+          }
+        });
+        
+        console.log(`${url} - Status: ${response.status}`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          results.push({
+            url: url,
+            status: response.status,
+            success: true,
+            eventCount: data.data ? data.data.length : 0,
+            sampleData: data.data && data.data.length > 0 ? {
+              id: data.data[0].id,
+              title: data.data[0].title,
+              organization: data.data[0].organization || 'unknown'
+            } : null
+          });
+          
+          // If we found a working endpoint, break and use it
+          if (data.data && data.data.length > 0) {
+            console.log(`SUCCESS! Found working endpoint: ${url}`);
+            break;
+          }
+        } else {
+          results.push({
+            url: url,
+            status: response.status,
+            success: false,
+            error: `HTTP ${response.status}`
           });
         }
-      });
+      } catch (error) {
+        console.log(`${url} - Error: ${error.message}`);
+        results.push({
+          url: url,
+          success: false,
+          error: error.message
+        });
+      }
+      
+      // Small delay between requests
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
-
-    console.log('Processed events:', events.length);
 
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
         success: true,
-        count: events.length,
-        events: events,
-        lastUpdated: new Date().toISOString()
+        message: 'API endpoint testing complete',
+        results: results,
+        workingEndpoint: results.find(r => r.success && r.eventCount > 0)?.url || null
       })
     };
 
   } catch (error) {
-    console.error('Function error:', error);
+    console.error('Testing error:', error);
     
     return {
       statusCode: 500,
       headers,
       body: JSON.stringify({
         success: false,
-        error: error.message,
-        events: []
+        error: error.message
       })
     };
   }

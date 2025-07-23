@@ -685,6 +685,17 @@
         let districtBoundariesVisible = true; // Track visibility state
         let currentSelectedDistrict = null; // Track currently selected district
 
+        function calculateDistance(lat1, lng1, lat2, lng2) {
+            const R = 3959; // Earth's radius in miles
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLng/2) * Math.sin(dLng/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
         function findClosestDistricts() {
             const btn = document.getElementById('findClosestBtn');
             
@@ -749,11 +760,11 @@
                             });
                         }
                         
-                        // Sort by distance and take top 8
+                        // Sort by distance
                         distances.sort((a, b) => a.distance - b.distance);
-                        const closest8 = distances.slice(0, 8);
                         
-                        displayClosestDistricts(closest8);
+                        // Display closest 3 first, with option to show 5 more
+                        displayClosestDistricts(distances, 3);
                         
                         // Reset button
                         btn.innerHTML = '📍 What swing districts are closest to me?';
@@ -877,65 +888,40 @@
                 });
             }
             
-            // Sort by distance and take top 8
+            // Sort by distance
             distances.sort((a, b) => a.distance - b.distance);
-            const closest8 = distances.slice(0, 8);
             
-            displayClosestDistricts(closest8);
-        }
-            const R = 3959; // Earth's radius in miles
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLng = (lng2 - lng1) * Math.PI / 180;
-            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                      Math.sin(dLng/2) * Math.sin(dLng/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            return R * c;
+            // Display closest 3 first, with option to show 5 more
+            displayClosestDistricts(distances, 3);
         }
 
-        function displayClosestDistricts(districts) {
+        function displayClosestDistricts(allDistances, initialCount = 3) {
             const container = document.getElementById('closestDistricts');
             
             let html = '<div class="closest-districts-list" style="margin-top: 20px;">';
-            html += '<h3 style="color: black; margin-bottom: 20px; font-size: 1.5rem;">🎯 Your 8 Closest Swing Districts</h3>';
+            html += '<h3 style="color: black; margin-bottom: 20px; font-size: 1.5rem;">🎯 Your Closest Swing Districts</h3>';
             
-            districts.forEach((district, index) => {
-                // Set background color based on current representative's party
-                const cardBackground = district.party === 'D' ? 'rgba(173, 216, 230, 0.3)' : 'rgba(255, 182, 193, 0.3)'; // Pale blue for Dem, pale pink for Rep
-                const borderColor = district.party === 'D' ? '#4169E1' : '#DC143C'; // Blue for Dem, red for Rep
-                
-                html += '<div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 15px; margin: 10px 0; background: ' + cardBackground + '; border-radius: 10px; border-left: 5px solid ' + borderColor + '; box-shadow: 0 2px 10px rgba(0,0,0,0.05); transition: all 0.3s ease;">';
-                html += '<div style="flex: 1;">';
-                html += '<div style="font-weight: bold; font-size: 1.1rem; color: #333; margin-bottom: 5px;">' + district.district + '</div>';
-                html += '<div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">';
-                html += '<span style="color: #666;">' + district.rep + '</span>';
-                
-                // Party label with proper colors
-                const partyColor = district.party === 'D' ? '#4169E1' : '#DC143C';
-                html += '<span style="background: ' + partyColor + '; color: white; padding: 3px 8px; border-radius: 15px; font-size: 0.8rem; font-weight: bold;">' + district.party + '</span>';
-                
-                // Action label with proper colors
-                const actionColor = district.action === 'FLIP' ? '#FF6B35' : '#4CAF50';
-                html += '<span style="background: ' + actionColor + '; color: white; padding: 4px 10px; border-radius: 15px; font-size: 0.9rem; font-weight: bold;">' + district.action + '</span>';
-                
-                // PVI score
-                html += '<span style="background: #f0f0f0; color: #666; padding: 4px 8px; border-radius: 10px; font-size: 0.9rem;">' + district.pvi + '</span>';
-                html += '</div>';
-                
-                // Add cities information
-                if (district.cities && district.cities.length > 0) {
-                    html += '<div class="cities-info">';
-                    html += '<div class="cities-label">Biggest 5 Cities:</div>';
-                    html += '<div class="cities-list">' + district.cities.join(', ') + '</div>';
-                    html += '</div>';
-                }
-                
-                html += '</div>';
-                html += '<div style="text-align: right; color: #667eea; font-weight: bold; font-size: 1.1rem;">' + Math.round(district.distance) + ' miles</div>';
-                html += '</div>';
+            // Show the first batch of districts
+            const currentBatch = allDistances.slice(0, initialCount);
+            
+            currentBatch.forEach((district, index) => {
+                html += createDistrictCard(district);
             });
             
+            // Add "Show me 5 more" button if there are more districts
+            if (allDistances.length > initialCount) {
+                const remainingCount = Math.min(5, allDistances.length - initialCount);
+                html += '<div style="text-align: center; margin: 20px 0;">';
+                html += '<button onclick="showMoreDistricts(' + initialCount + ')" style="background: #667eea; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; font-weight: bold; transition: all 0.3s ease;">';
+                html += '📍 Show me ' + remainingCount + ' more districts';
+                html += '</button>';
+                html += '</div>';
+            }
+            
             html += '</div>';
+            
+            // Store all distances for the "show more" functionality
+            window.allDistrictDistances = allDistances;
             
             container.innerHTML = html;
             container.style.display = 'block';
@@ -944,6 +930,83 @@
             setTimeout(() => {
                 container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }, 100);
+        }
+
+        function showMoreDistricts(currentCount) {
+            const allDistances = window.allDistrictDistances;
+            if (!allDistances) return;
+            
+            const newCount = currentCount + 5;
+            const totalToShow = Math.min(newCount, allDistances.length);
+            
+            const container = document.getElementById('closestDistricts');
+            
+            let html = '<div class="closest-districts-list" style="margin-top: 20px;">';
+            html += '<h3 style="color: black; margin-bottom: 20px; font-size: 1.5rem;">🎯 Your Closest Swing Districts</h3>';
+            
+            // Show all districts up to the new count
+            const currentBatch = allDistances.slice(0, totalToShow);
+            
+            currentBatch.forEach((district, index) => {
+                html += createDistrictCard(district);
+            });
+            
+            // Add "Show me 5 more" button if there are still more districts
+            if (allDistances.length > totalToShow) {
+                const remainingCount = Math.min(5, allDistances.length - totalToShow);
+                html += '<div style="text-align: center; margin: 20px 0;">';
+                html += '<button onclick="showMoreDistricts(' + totalToShow + ')" style="background: #667eea; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; font-weight: bold; transition: all 0.3s ease;">';
+                html += '📍 Show me ' + remainingCount + ' more districts';
+                html += '</button>';
+                html += '</div>';
+            }
+            
+            html += '</div>';
+            
+            container.innerHTML = html;
+            
+            // Smooth scroll to the new content
+            setTimeout(() => {
+                container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 100);
+        }
+
+        function createDistrictCard(district) {
+            // Set background color based on current representative's party
+            const cardBackground = district.party === 'D' ? 'rgba(173, 216, 230, 0.3)' : 'rgba(255, 182, 193, 0.3)'; // Pale blue for Dem, pale pink for Rep
+            const borderColor = district.party === 'D' ? '#4169E1' : '#DC143C'; // Blue for Dem, red for Rep
+            
+            let html = '<div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 15px; margin: 10px 0; background: ' + cardBackground + '; border-radius: 10px; border-left: 5px solid ' + borderColor + '; box-shadow: 0 2px 10px rgba(0,0,0,0.05); transition: all 0.3s ease;">';
+            html += '<div style="flex: 1;">';
+            html += '<div style="font-weight: bold; font-size: 1.1rem; color: #333; margin-bottom: 5px;">' + district.district + '</div>';
+            html += '<div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">';
+            html += '<span style="color: #666;">' + district.rep + '</span>';
+            
+            // Party label with proper colors
+            const partyColor = district.party === 'D' ? '#4169E1' : '#DC143C';
+            html += '<span style="background: ' + partyColor + '; color: white; padding: 3px 8px; border-radius: 15px; font-size: 0.8rem; font-weight: bold;">' + district.party + '</span>';
+            
+            // Action label with proper colors
+            const actionColor = district.action === 'FLIP' ? '#FF6B35' : '#4CAF50';
+            html += '<span style="background: ' + actionColor + '; color: white; padding: 4px 10px; border-radius: 15px; font-size: 0.9rem; font-weight: bold;">' + district.action + '</span>';
+            
+            // PVI score
+            html += '<span style="background: #f0f0f0; color: #666; padding: 4px 8px; border-radius: 10px; font-size: 0.9rem;">' + district.pvi + '</span>';
+            html += '</div>';
+            
+            // Add cities information
+            if (district.cities && district.cities.length > 0) {
+                html += '<div class="cities-info">';
+                html += '<div class="cities-label">Biggest 5 Cities:</div>';
+                html += '<div class="cities-list">' + district.cities.join(', ') + '</div>';
+                html += '</div>';
+            }
+            
+            html += '</div>';
+            html += '<div style="text-align: right; color: #667eea; font-weight: bold; font-size: 1.1rem;">' + Math.round(district.distance) + ' miles</div>';
+            html += '</div>';
+            
+            return html;
         }
 
         // District mappings

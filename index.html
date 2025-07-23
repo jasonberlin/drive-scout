@@ -2939,6 +2939,24 @@
                 init();
             }, 100);
         });
+        // Hide districts function
+        function hideClosestDistricts() {
+            console.log('🙈 Hide button clicked!');
+            const container = document.getElementById('closestDistricts');
+            
+            if (container) {
+                console.log('✅ Container found, hiding it');
+                container.style.display = 'none';
+                container.innerHTML = '';
+                
+                // Clear the stored distances
+                window.allDistrictDistances = null;
+                
+                console.log('🙈 Districts hidden successfully');
+            } else {
+                console.log('❌ Container not found!');
+            }
+        }
     </script>
 </body>
 </html>

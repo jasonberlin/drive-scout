@@ -1,6 +1,5 @@
 // netlify/functions/get-mobilize-events.js
 exports.handler = async (event, context) => {
-  // Enable CORS for your domain
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
@@ -8,20 +7,13 @@ exports.handler = async (event, context) => {
     'Content-Type': 'application/json'
   };
 
-  // Handle preflight requests
   if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers,
-      body: ''
-    };
+    return { statusCode: 200, headers, body: '' };
   }
 
   try {
     console.log('🔍 Fetching Field Team 6 events from Mobilize...');
     
-    // Mobilize.us API endpoint for Field Team 6 events
-    // Using the organization slug 'ft6' and filtering by tag_ids=20036 (voter registration tag)
     const mobilizeUrl = 'https://api.mobilize.us/v1/organizations/ft6/events?tag_ids=20036&timeslot_start=gte_now&per_page=50';
     
     const response = await fetch(mobilizeUrl, {
@@ -36,24 +28,27 @@ exports.handler = async (event, context) => {
     }
 
     const data = await response.json();
-    console.log('✅ Successfully fetched Mobilize data');
+    console.log(`📊 Raw events from API: ${data.data ? data.data.length : 0}`);
     
-    // Process and filter the events
     const processedEvents = [];
     
     if (data.data && Array.isArray(data.data)) {
-      data.data.forEach(event => {
-        // Skip events without location data
-        if (!event.location || !event.location.locality || !event.timeslots || event.timeslots.length === 0) {
+      data.data.forEach((event, index) => {
+        console.log(`🔍 Processing event ${index + 1}: ${event.title || 'Untitled'}`);
+        
+        if (!event.location || !event.timeslots || event.timeslots.length === 0) {
+          console.log(`⚠️ Skipping event ${index + 1}: Missing location or timeslots`);
           return;
         }
 
-        // Extract event details
         const location = event.location;
         const firstTimeslot = event.timeslots[0];
         
-        // Try to determine congressional district from location
-        const district = determineDistrictFromLocation(location);
+        console.log(`📍 Event location: ${location.locality}, ${location.region}`);
+        
+        // Simple state-based district assignment + coordinates for distance calc
+        const district = getDistrictFromState(location.region);
+        console.log(`🗳️ Determined district: ${district}`);
         
         const processedEvent = {
           id: event.id,
@@ -74,14 +69,14 @@ exports.handler = async (event, context) => {
           tags: event.tags || []
         };
 
-        // Only include events with valid dates and locations
         if (processedEvent.date && (processedEvent.coordinates || processedEvent.city)) {
           processedEvents.push(processedEvent);
+          console.log(`✅ Added event: ${processedEvent.title} in ${processedEvent.district}`);
         }
       });
     }
 
-    console.log(`📊 Processed ${processedEvents.length} valid events`);
+    console.log(`📊 Processed ${processedEvents.length} valid events total`);
 
     return {
       statusCode: 200,
@@ -109,76 +104,22 @@ exports.handler = async (event, context) => {
   }
 };
 
-function determineDistrictFromLocation(location) {
-  if (!location.locality || !location.region) {
-    return 'Unknown';
-  }
-
-  const city = location.locality.toLowerCase();
-  const state = location.region.toUpperCase();
+function getDistrictFromState(region) {
+  if (!region) return 'Unknown';
   
-  // Map cities to likely congressional districts based on our swing district data
-  const cityToDistrict = {
-    // Arizona
-    'scottsdale': 'AZ-01',
-    'tempe': 'AZ-01',
-    'mesa': 'AZ-01',
-    'paradise valley': 'AZ-01',
-    'fountain hills': 'AZ-01',
-    'flagstaff': 'AZ-02',
-    'prescott': 'AZ-02',
-    'sedona': 'AZ-02',
-    'phoenix': 'AZ-04', // Southern Phoenix
-    'chandler': 'AZ-04',
-    'tucson': 'AZ-06',
-    'sierra vista': 'AZ-06',
-    
-    // California  
-    'stockton': 'CA-09',
-    'lodi': 'CA-09',
-    'tracy': 'CA-09',
-    'modesto': 'CA-13',
-    'turlock': 'CA-13',
-    'merced': 'CA-13',
-    'fresno': 'CA-21',
-    'hanford': 'CA-21',
-    'bakersfield': 'CA-22',
-    'santa clarita': 'CA-27',
-    'palmdale': 'CA-27',
-    'lancaster': 'CA-27',
-    'riverside': 'CA-41',
-    'corona': 'CA-41',
-    'irvine': 'CA-45',
-    'tustin': 'CA-45',
-    'huntington beach': 'CA-47',
-    'garden grove': 'CA-47',
-    'oceanside': 'CA-49',
-    'carlsbad': 'CA-49',
-    
-    // Colorado
-    'grand junction': 'CO-03',
-    'pueblo': 'CO-03',
-    'thornton': 'CO-08',
-    'westminster': 'CO-08',
-    
-    // Connecticut
-    'waterbury': 'CT-05',
-    'danbury': 'CT-05',
-    
-    // Florida
-    'boca raton': 'FL-23',
-    'delray beach': 'FL-23',
-    'hialeah': 'FL-25',
-    'homestead': 'FL-25',
-    
-    // Nevada
-    'las vegas': 'NV-01',
-    'henderson': 'NV-03',
-    'north las vegas': 'NV-04'
-  };
-
-  const districtKey = city + (state ? '-' + state : '');
-  return cityToDistrict[city] || `${state}-??`;
+  const state = region.toUpperCase().trim();
+  
+  // Simple state-based assignment - let the frontend handle distance filtering
+  switch (state) {
+    case 'AK': case 'ALASKA': return 'AK-AL';
+    case 'AZ': case 'ARIZONA': return 'AZ-??';
+    case 'CA': case 'CALIFORNIA': return 'CA-??';
+    case 'CO': case 'COLORADO': return 'CO-??';
+    case 'CT': case 'CONNECTICUT': return 'CT-??';
+    case 'FL': case 'FLORIDA': return 'FL-??';
+    case 'NV': case 'NEVADA': return 'NV-??';
+    default: return `${state}-??`;
+  }
 }
 
 function formatTime(dateString) {

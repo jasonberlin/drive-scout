@@ -20,21 +20,32 @@
         }
 
         function hideClosestDistricts() {
+            console.log('🙈 Hide button clicked!');
             const container = document.getElementById('closestDistricts');
-            container.style.display = 'none';
-            container.innerHTML = '';
             
-            // Clear the stored distances
-            window.allDistrictDistances = null;
-            
-            console.log('🙈 Districts hidden');
+            if (container) {
+                console.log('✅ Container found, hiding it');
+                container.style.display = 'none';
+                container.innerHTML = '';
+                
+                // Clear the stored distances
+                window.allDistrictDistances = null;
+                
+                console.log('🙈 Districts hidden successfully');
+            } else {
+                console.log('❌ Container not found!');
+            }
         }
+
+        // Make sure the function is available globally
+        window.hideClosestDistricts = hideClosestDistricts;
 
         body {
             font-family: 'raleway-v2', 'Raleway', sans-serif;
             font-style: normal;
             font-weight: 400;
-            background: #5f6360;
+            background: #5f6360 !important;
+            background-color: #5f6360 !important;
             min-height: 100vh;
             margin: 0;
             padding: 0;
@@ -696,6 +707,25 @@
         let districtBoundariesVisible = true; // Track visibility state
         let currentSelectedDistrict = null; // Track currently selected district
 
+        // Global functions that need to be accessible from onclick handlers
+        function hideClosestDistricts() {
+            console.log('🙈 Hide button clicked!');
+            const container = document.getElementById('closestDistricts');
+            
+            if (container) {
+                console.log('✅ Container found, hiding it');
+                container.style.display = 'none';
+                container.innerHTML = '';
+                
+                // Clear the stored distances
+                window.allDistrictDistances = null;
+                
+                console.log('🙈 Districts hidden successfully');
+            } else {
+                console.log('❌ Container not found!');
+            }
+        }
+
         function calculateDistance(lat1, lng1, lat2, lng2) {
             const R = 3959; // Earth's radius in miles
             const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -906,6 +936,24 @@
             displayClosestDistricts(distances, 3);
         }
 
+        function hideClosestDistricts() {
+            console.log('🙈 Hide button clicked!');
+            const container = document.getElementById('closestDistricts');
+            
+            if (container) {
+                console.log('✅ Container found, hiding it');
+                container.style.display = 'none';
+                container.innerHTML = '';
+                
+                // Clear the stored distances
+                window.allDistrictDistances = null;
+                
+                console.log('🙈 Districts hidden successfully');
+            } else {
+                console.log('❌ Container not found!');
+            }
+        }
+
         function displayClosestDistricts(allDistances, initialCount = 3) {
             const container = document.getElementById('closestDistricts');
             
@@ -963,6 +1011,13 @@
                 html += '</button>';
                 html += '</div>';
             }
+            
+            // Add "Hide districts" button
+            html += '<div style="text-align: center; margin: 10px 0;">';
+            html += '<button onclick="hideClosestDistricts()" style="background: #6c757d; color: white; padding: 10px 20px; border: none; border-radius: 8px; font-size: 0.9rem; cursor: pointer; font-weight: bold; transition: all 0.3s ease;">';
+            html += '🙈 Hide districts';
+            html += '</button>';
+            html += '</div>';
             
             // Add "Hide districts" button
             html += '<div style="text-align: center; margin: 10px 0;">';
@@ -1048,6 +1103,13 @@
                 html += '</button>';
                 html += '</div>';
             }
+            
+            // Add "Hide districts" button
+            html += '<div style="text-align: center; margin: 10px 0;">';
+            html += '<button onclick="hideClosestDistricts()" style="background: #6c757d; color: white; padding: 10px 20px; border: none; border-radius: 8px; font-size: 0.9rem; cursor: pointer; font-weight: bold; transition: all 0.3s ease;">';
+            html += '🙈 Hide districts';
+            html += '</button>';
+            html += '</div>';
             
             // Add "Hide districts" button
             html += '<div style="text-align: center; margin: 10px 0;">';
@@ -2902,34 +2964,6 @@
             return div;
         }
 
-        function focusOnCollege(lat, lng) {
-            if (map && lat && lng) {
-                console.log('Focusing on college at: ' + lat + ', ' + lng);
-                map.setView([lat, lng], 16);
-                
-                markers.forEach(function(marker) {
-                    const markerLatLng = marker.getLatLng();
-                    if (Math.abs(markerLatLng.lat - lat) < 0.0001 && Math.abs(markerLatLng.lng - lng) < 0.0001) {
-                        marker.openPopup();
-                    }
-                });
-            }
-        }
-
-        function showNoData(state, district) {
-            document.getElementById('collegeItems').innerHTML = 
-                '<div class="no-data">' +
-                    '<h3>Ready for ' + district + ' data</h3>' +
-                    '<p><strong>To add your data:</strong></p>' +
-                    '<ol style="text-align: left; max-width: 500px; margin: 20px auto;">' +
-                        '<li>Export the <strong>' + district + '</strong> tab from your Google Sheet as CSV</li>' +
-                        '<li>Name the file <strong>' + district + '.csv</strong> (or <strong>' + district.replace('-', '') + '.csv</strong>)</li>' +
-                        '<li>Upload it to a <strong>data/</strong> folder on your website</li>' +
-                        '<li>The app will automatically load it!</li>' +
-                    '</ol>' +
-                    '<p style="margin-top: 20px;"><em>This district is mapped but waiting for CSV data.</em></p>' +
-                '</div>';
-            document.getElementById('collegeList').style.display = 'block';
         }
 
         // Initialize the app when the page loads

@@ -13,10 +13,17 @@
     <link rel="icon" type="image/png" sizes="512x512" href="/android-chrome-512x512.png">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
+        /* Force background color - overriding any external CSS */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+        }
+
+        html, body {
+            background: #5f6360 !important;
+            background-color: #5f6360 !important;
+            min-height: 100vh !important;
         }
 
         function hideClosestDistricts() {

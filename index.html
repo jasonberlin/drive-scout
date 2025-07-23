@@ -525,9 +525,6 @@
     <script>
         console.log('🔥 ARTIFACT VERSION 2024-NEW - BATCHED DISTRICTS ENABLED 🔥');
 
-        // Your existing JavaScript code continues here...
-        // (I'll continue with the rest in the next update)
-        
         // Global variables
         let map;
         let markers = [];
@@ -538,15 +535,357 @@
         let collegeData = {};
         let loadedDistricts = new Set();
 
-        // Simplified initialization for now
+        // District mappings
+        const districtMappings = {
+            'Alaska': ['AK-01'],
+            'Arizona': ['AZ-01', 'AZ-02', 'AZ-06', 'AZ-07'],
+            'California': ['CA-09', 'CA-21', 'CA-22', 'CA-27', 'CA-41', 'CA-45', 'CA-47', 'CA-49', 'CA-51'],
+            'Colorado': ['CO-03', 'CO-08'],
+            'Connecticut': ['CT-05'],
+            'Florida': ['FL-13', 'FL-22', 'FL-27', 'FL-28'],
+            'Illinois': ['IL-17'],
+            'Indiana': ['IN-01'],
+            'Iowa': ['IA-01', 'IA-02', 'IA-03'],
+            'Maine': ['ME-02'],
+            'Maryland': ['MD-06'],
+            'Michigan': ['MI-03', 'MI-07', 'MI-08', 'MI-10'],
+            'Minnesota': ['MN-02'],
+            'Montana': ['MT-01'],
+            'Nebraska': ['NE-02'],
+            'Nevada': ['NV-01', 'NV-03', 'NV-04'],
+            'New Hampshire': ['NH-01', 'NH-02'],
+            'New Jersey': ['NJ-07'],
+            'New Mexico': ['NM-02'],
+            'New York': ['NY-01', 'NY-02', 'NY-03', 'NY-04', 'NY-17', 'NY-18', 'NY-19', 'NY-22'],
+            'North Carolina': ['NC-01', 'NC-11'],
+            'Ohio': ['OH-01', 'OH-09', 'OH-13', 'OH-15'],
+            'Oregon': ['OR-04', 'OR-05', 'OR-06'],
+            'Pennsylvania': ['PA-07', 'PA-08', 'PA-10', 'PA-17'],
+            'Texas': ['TX-15', 'TX-28', 'TX-34'],
+            'Virginia': ['VA-02', 'VA-07', 'VA-10'],
+            'Washington': ['WA-03', 'WA-08'],
+            'Wisconsin': ['WI-01', 'WI-03', 'WI-08']
+        };
+
+        // District data with centers, representatives, and details
+        const districtData = {
+            'AK-01': { center: [64.0685, -152.2782], rep: 'Mary Peltola', party: 'D', action: 'HOLD', pvi: 'R+8', cities: ['Anchorage', 'Fairbanks', 'Juneau', 'Sitka', 'Wasilla'] },
+            'AZ-01': { center: [33.4942, -111.9261], rep: 'David Schweikert', party: 'R', action: 'FLIP', pvi: 'R+2', cities: ['Scottsdale', 'Phoenix', 'Tempe', 'Mesa', 'Fountain Hills'] },
+            'AZ-02': { center: [35.1983, -111.6513], rep: 'Eli Crane', party: 'R', action: 'HOLD', pvi: 'R+8', cities: ['Flagstaff', 'Prescott', 'Sedona', 'Cottonwood', 'Kingman'] },
+            'AZ-06': { center: [33.4152, -111.8315], rep: 'Juan Ciscomani', party: 'R', action: 'FLIP', pvi: 'R+1', cities: ['Mesa', 'Chandler', 'Gilbert', 'Queen Creek', 'Apache Junction'] },
+            'AZ-07': { center: [32.2226, -110.9747], rep: 'Raúl Grijalva', party: 'D', action: 'HOLD', pvi: 'D+5', cities: ['Tucson', 'Nogales', 'Douglas', 'Bisbee', 'Tombstone'] },
+            'CA-09': { center: [37.9577, -121.2908], rep: 'Josh Harder', party: 'D', action: 'HOLD', pvi: 'D+5', cities: ['Stockton', 'Manteca', 'Tracy', 'Lodi', 'Ripon'] },
+            'CA-21': { center: [36.7477, -119.7724], rep: 'Jim Costa', party: 'D', action: 'HOLD', pvi: 'D+5', cities: ['Fresno', 'Hanford', 'Tulare', 'Visalia', 'Merced'] },
+            'CA-22': { center: [35.3733, -119.0187], rep: 'David Valadao', party: 'R', action: 'FLIP', pvi: 'D+5', cities: ['Bakersfield', 'Delano', 'Tulare', 'Porterville', 'Taft'] },
+            'CA-27': { center: [34.4208, -118.4973], rep: 'George Whitesides', party: 'D', action: 'HOLD', pvi: 'D+4', cities: ['Santa Clarita', 'Palmdale', 'Lancaster', 'Simi Valley', 'Moorpark'] },
+            'CA-41': { center: [33.9425, -117.4011], rep: 'Ken Calvert', party: 'R', action: 'FLIP', pvi: 'R+3', cities: ['Riverside', 'Moreno Valley', 'Perris', 'Hemet', 'San Jacinto'] },
+            'CA-45': { center: [33.7175, -117.8311], rep: 'Michelle Steel', party: 'R', action: 'FLIP', pvi: 'R+2', cities: ['Irvine', 'Tustin', 'Orange', 'Lake Forest', 'Mission Viejo'] },
+            'CA-47': { center: [33.7403, -117.9898], rep: 'Dave Min', party: 'D', action: 'HOLD', pvi: 'D+3', cities: ['Huntington Beach', 'Garden Grove', 'Westminster', 'Fountain Valley', 'Seal Beach'] },
+            'CA-49': { center: [33.1959, -117.3795], rep: 'Mike Levin', party: 'D', action: 'HOLD', pvi: 'D+3', cities: ['Oceanside', 'Carlsbad', 'Vista', 'San Marcos', 'Encinitas'] },
+            'CA-51': { center: [32.6400, -117.0842], rep: 'Sara Jacobs', party: 'D', action: 'HOLD', pvi: 'D+14', cities: ['San Diego', 'Chula Vista', 'National City', 'Imperial Beach', 'Bonita'] },
+            'CO-03': { center: [39.5501, -107.7378], rep: 'Lauren Boebert', party: 'R', action: 'HOLD', pvi: 'R+7', cities: ['Pueblo', 'Grand Junction', 'Durango', 'Glenwood Springs', 'Montrose'] },
+            'CO-08': { center: [39.8561, -104.6737], rep: 'Yadira Caraveo', party: 'D', action: 'HOLD', pvi: 'D+1', cities: ['Thornton', 'Westminster', 'Northglenn', 'Commerce City', 'Brighton'] },
+            'CT-05': { center: [41.5623, -73.0877], rep: 'Jahana Hayes', party: 'D', action: 'HOLD', pvi: 'D+4', cities: ['Waterbury', 'Danbury', 'New Britain', 'Meriden', 'Torrington'] },
+            'FL-13': { center: [27.7663, -82.6404], rep: 'Anna Paulina Luna', party: 'R', action: 'HOLD', pvi: 'R+7', cities: ['St. Petersburg', 'Pinellas Park', 'Largo', 'Clearwater', 'Seminole'] },
+            'FL-22': { center: [26.3683, -80.1289], rep: 'Lois Frankel', party: 'D', action: 'HOLD', pvi: 'D+5', cities: ['Boca Raton', 'Delray Beach', 'Boynton Beach', 'West Palm Beach', 'Highland Beach'] },
+            'FL-27': { center: [25.6711, -80.3378], rep: 'Maria Elvira Salazar', party: 'R', action: 'FLIP', pvi: 'R+2', cities: ['Miami', 'Coral Gables', 'Key Biscayne', 'Pinecrest', 'South Miami'] },
+            'FL-28': { center: [25.9319, -80.3374], rep: 'Carlos Gimenez', party: 'R', action: 'FLIP', pvi: 'R+5', cities: ['Homestead', 'Cutler Bay', 'Palmetto Bay', 'Pinecrest', 'Kendall'] },
+            'IL-17': { center: [40.5572, -90.5776], rep: 'Eric Sorensen', party: 'D', action: 'HOLD', pvi: 'D+2', cities: ['Rockford', 'Peoria', 'Rock Island', 'Moline', 'Galesburg'] },
+            'IN-01': { center: [41.4734, -87.4579], rep: 'Frank Mrvan', party: 'D', action: 'HOLD', pvi: 'D+3', cities: ['Gary', 'Hammond', 'East Chicago', 'Portage', 'Hobart'] },
+            'IA-01': { center: [41.6611, -91.5302], rep: 'Mariannette Miller-Meeks', party: 'R', action: 'FLIP', pvi: 'R+1', cities: ['Cedar Rapids', 'Iowa City', 'Davenport', 'Burlington', 'Fort Madison'] },
+            'IA-02': { center: [40.4518, -93.6091], rep: 'Ashley Hinson', party: 'R', action: 'HOLD', pvi: 'R+3', cities: ['Cedar Falls', 'Waterloo', 'Mason City', 'Ottumwa', 'Fairfield'] },
+            'IA-03': { center: [41.5868, -93.6250], rep: 'Zach Nunn', party: 'R', action: 'FLIP', pvi: 'R+3', cities: ['Des Moines', 'West Des Moines', 'Ankeny', 'Ames', 'Indianola'] },
+            'ME-02': { center: [45.6794, -69.2558], rep: 'Jared Golden', party: 'D', action: 'HOLD', pvi: 'R+6', cities: ['Lewiston', 'Bangor', 'Auburn', 'Biddeford', 'Sanford'] },
+            'MD-06': { center: [39.6403, -77.7200], rep: 'Neil Parrott', party: 'R', action: 'FLIP', pvi: 'D+1', cities: ['Frederick', 'Hagerstown', 'Martinsburg', 'Cumberland', 'Charles Town'] },
+            'MI-03': { center: [42.9634, -85.6681], rep: 'Hillary Scholten', party: 'D', action: 'HOLD', pvi: 'D+1', cities: ['Grand Rapids', 'Walker', 'Kentwood', 'Wyoming', 'Grandville'] },
+            'MI-07': { center: [42.2776, -84.5497], rep: 'Tom Barrett', party: 'R', action: 'FLIP', pvi: 'R+1', cities: ['Jackson', 'Battle Creek', 'Portage', 'Marshall', 'Albion'] },
+            'MI-08': { center: [42.5803, -84.5555], rep: 'Kristen McDonald Rivet', party: 'D', action: 'HOLD', pvi: 'D+1', cities: ['Lansing', 'East Lansing', 'Flint', 'Burton', 'Grand Blanc'] },
+            'MI-10': { center: [42.8059, -82.9357], rep: 'John James', party: 'R', action: 'HOLD', pvi: 'R+3', cities: ['Macomb', 'St. Clair Shores', 'Warren', 'Troy', 'Sterling Heights'] },
+            'MN-02': { center: [44.7441, -93.3464], rep: 'Angie Craig', party: 'D', action: 'HOLD', pvi: 'D+1', cities: ['Burnsville', 'Eagan', 'Apple Valley', 'Lakeville', 'Savage'] },
+            'MT-01': { center: [47.0527, -109.6333], rep: 'Ryan Zinke', party: 'R', action: 'HOLD', pvi: 'R+7', cities: ['Billings', 'Missoula', 'Great Falls', 'Bozeman', 'Butte'] },
+            'NE-02': { center: [41.2565, -95.9345], rep: 'Don Bacon', party: 'R', action: 'FLIP', pvi: 'R+2', cities: ['Omaha', 'Bellevue', 'Papillion', 'La Vista', 'Ralston'] },
+            'NV-01': { center: [36.1147, -115.2167], rep: 'Dina Titus', party: 'D', action: 'HOLD', pvi: 'D+3', cities: ['Las Vegas', 'North Las Vegas', 'Henderson', 'Paradise', 'Spring Valley'] },
+            'NV-03': { center: [36.0397, -114.9817], rep: 'Susie Lee', party: 'D', action: 'HOLD', pvi: 'D+1', cities: ['Henderson', 'Boulder City', 'Las Vegas', 'Paradise', 'Enterprise'] },
+            'NV-04': { center: [36.2277, -115.2640], rep: 'Steven Horsford', party: 'D', action: 'HOLD', pvi: 'D+3', cities: ['North Las Vegas', 'Reno', 'Carson City', 'Sparks', 'Fernley'] },
+            'NH-01': { center: [43.0389, -71.0253], rep: 'Chris Pappas', party: 'D', action: 'HOLD', pvi: 'D+2', cities: ['Manchester', 'Nashua', 'Concord', 'Dover', 'Rochester'] },
+            'NH-02': { center: [43.6106, -72.2678], rep: 'Maggie Goodlander', party: 'D', action: 'HOLD', pvi: 'D+2', cities: ['Nashua', 'Keene', 'Lebanon', 'Claremont', 'Berlin'] },
+            'NJ-07': { center: [40.5795, -74.6492], rep: 'Thomas Kean Jr.', party: 'R', action: 'FLIP', pvi: 'R+1', cities: ['New Brunswick', 'Plainfield', 'Somerville', 'Bridgewater', 'Warren'] },
+            'NM-02': { center: [33.1581, -106.1019], rep: 'Gabe Vasquez', party: 'D', action: 'HOLD', pvi: 'D+1', cities: ['Las Cruces', 'Roswell', 'Alamogordo', 'Carlsbad', 'Hobbs'] },
+            'NY-01': { center: [40.9176, -72.8092], rep: 'Nick LaLota', party: 'R', action: 'HOLD', pvi: 'R+3', cities: ['Riverhead', 'Southampton', 'East Hampton', 'Shelter Island', 'Southold'] },
+            'NY-02': { center: [40.7282, -73.4510], rep: 'Andrew Garbarino', party: 'R', action: 'HOLD', pvi: 'R+2', cities: ['Babylon', 'Islip', 'Smithtown', 'Huntington', 'Brookhaven'] },
+            'NY-03': { center: [40.8176, -73.5432], rep: 'Tom Suozzi', party: 'D', action: 'HOLD', pvi: 'D+2', cities: ['Glen Cove', 'Oyster Bay', 'Hempstead', 'Great Neck', 'Port Washington'] },
+            'NY-04': { center: [40.6746, -73.5594], rep: 'Anthony D\'Esposito', party: 'R', action: 'FLIP', pvi: 'D+1', cities: ['Hempstead', 'Long Beach', 'Lynbrook', 'Valley Stream', 'Rockville Centre'] },
+            'NY-17': { center: [41.1220, -73.7948], rep: 'Mike Lawler', party: 'R', action: 'FLIP', pvi: 'D+3', cities: ['White Plains', 'Yonkers', 'New Rochelle', 'Mount Vernon', 'Rye'] },
+            'NY-18': { center: [41.5434, -74.0776], rep: 'Pat Ryan', party: 'D', action: 'HOLD', pvi: 'D+1', cities: ['Newburgh', 'Middletown', 'Poughkeepsie', 'Kingston', 'Beacon'] },
+            'NY-19': { center: [42.2619, -73.8888], rep: 'Marc Molinaro', party: 'R', action: 'FLIP', pvi: 'R+2', cities: ['Albany', 'Troy', 'Schenectady', 'Saratoga Springs', 'Glens Falls'] },
+            'NY-22': { center: [43.0481, -75.4662], rep: 'Brandon Williams', party: 'R', action: 'FLIP', pvi: 'R+3', cities: ['Syracuse', 'Utica', 'Rome', 'Oswego', 'Fulton'] },
+            'NC-01': { center: [35.8557, -77.9447], rep: 'Don Davis', party: 'D', action: 'HOLD', pvi: 'D+1', cities: ['Rocky Mount', 'Wilson', 'Greenville', 'Elizabeth City', 'Roanoke Rapids'] },
+            'NC-11': { center: [35.4996, -82.9940], rep: 'Chuck Edwards', party: 'R', action: 'HOLD', pvi: 'R+7', cities: ['Asheville', 'Hendersonville', 'Morganton', 'Marion', 'Brevard'] },
+            'OH-01': { center: [39.1612, -84.4569], rep: 'Greg Landsman', party: 'D', action: 'HOLD', pvi: 'D+2', cities: ['Cincinnati', 'Hamilton', 'Springdale', 'Forest Park', 'Norwood'] },
+            'OH-09': { center: [41.5034, -83.6874], rep: 'Marcy Kaptur', party: 'D', action: 'HOLD', pvi: 'D+3', cities: ['Toledo', 'Lorain', 'Sandusky', 'Fremont', 'Norwalk'] },
+            'OH-13': { center: [41.0782, -81.5190], rep: 'Emilia Sykes', party: 'D', action: 'HOLD', pvi: 'D+2', cities: ['Akron', 'Barberton', 'Tallmadge', 'Cuyahoga Falls', 'Stow'] },
+            'OH-15': { center: [39.9612, -82.9988], rep: 'Mike Carey', party: 'R', action: 'HOLD', pvi: 'R+4', cities: ['Columbus', 'Newark', 'Lancaster', 'Circleville', 'Delaware'] },
+            'OR-04': { center: [43.8041, -123.0351], rep: 'Val Hoyle', party: 'D', action: 'HOLD', pvi: 'D+2', cities: ['Eugene', 'Springfield', 'Corvallis', 'Albany', 'Lebanon'] },
+            'OR-05': { center: [45.1885, -122.4056], rep: 'Lori Chavez-DeRemer', party: 'R', action: 'FLIP', pvi: 'D+1', cities: ['Salem', 'Keizer', 'McMinnville', 'Newberg', 'Woodburn'] },
+            'OR-06': { center: [45.3311, -122.8312], rep: 'Andrea Salinas', party: 'D', action: 'HOLD', pvi: 'D+4', cities: ['Beaverton', 'Tigard', 'Lake Oswego', 'Tualatin', 'Sherwood'] },
+            'PA-07': { center: [40.6023, -75.4714], rep: 'Susan Wild', party: 'D', action: 'HOLD', pvi: 'D+2', cities: ['Allentown', 'Bethlehem', 'Easton', 'Northampton', 'Emmaus'] },
+            'PA-08': { center: [40.3057, -74.7429], rep: 'Matt Cartwright', party: 'D', action: 'HOLD', pvi: 'D+4', cities: ['Scranton', 'Wilkes-Barre', 'Hazleton', 'Carbondale', 'Pittston'] },
+            'PA-10': { center: [41.2033, -76.8839], rep: 'Scott Perry', party: 'R', action: 'FLIP', pvi: 'R+5', cities: ['Harrisburg', 'York', 'Lebanon', 'Carlisle', 'Mechanicsburg'] },
+            'PA-17': { center: [40.4406, -79.9959], rep: 'Chris Deluzio', party: 'D', action: 'HOLD', pvi: 'D+2', cities: ['Pittsburgh', 'Cranberry Township', 'Moon Township', 'Ross Township', 'McCandless'] },
+            'TX-15': { center: [26.2034, -98.2300], rep: 'Monica De La Cruz', party: 'R', action: 'HOLD', pvi: 'R+3', cities: ['McAllen', 'Edinburg', 'Mission', 'Pharr', 'San Juan'] },
+            'TX-28': { center: [28.8056, -100.4556], rep: 'Henry Cuellar', party: 'D', action: 'HOLD', pvi: 'D+3', cities: ['Laredo', 'San Antonio', 'Eagle Pass', 'Del Rio', 'Uvalde'] },
+            'TX-34': { center: [27.8006, -97.3964], rep: 'Vicente Gonzalez', party: 'D', action: 'HOLD', pvi: 'D+3', cities: ['Corpus Christi', 'Brownsville', 'Victoria', 'Kingsville', 'Beeville'] },
+            'VA-02': { center: [36.8468, -76.2852], rep: 'Jen Kiggans', party: 'R', action: 'FLIP', pvi: 'R+2', cities: ['Virginia Beach', 'Norfolk', 'Chesapeake', 'Portsmouth', 'Suffolk'] },
+            'VA-07': { center: [37.6762, -77.6413], rep: 'Rob Wittman', party: 'R', action: 'HOLD', pvi: 'R+6', cities: ['Fredericksburg', 'Culpeper', 'Stafford', 'King George', 'Caroline'] },
+            'VA-10': { center: [39.0458, -77.5678], rep: 'Jennifer Wexton', party: 'D', action: 'HOLD', pvi: 'D+6', cities: ['Loudoun County', 'Fairfax', 'Leesburg', 'Sterling', 'Herndon'] },
+            'WA-03': { center: [46.1349, -122.9015], rep: 'Marie Gluesenkamp Perez', party: 'D', action: 'HOLD', pvi: 'R+4', cities: ['Vancouver', 'Centralia', 'Longview', 'Kelso', 'Chehalis'] },
+            'WA-08': { center: [47.3826, -121.9706], rep: 'Kim Schrier', party: 'D', action: 'HOLD', pvi: 'D+1', cities: ['Bellevue', 'Sammamish', 'Issaquah', 'Mercer Island', 'Renton'] }
+        };
+
+        function calculateDistance(lat1, lng1, lat2, lng2) {
+            const R = 3959; // Earth's radius in miles
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                    Math.sin(dLng/2) * Math.sin(dLng/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        function showClosestDistrictsBatched(userLat, userLng) {
+            console.log('🎯 NEW BATCHED FUNCTION CALLED - Will show only 3 districts initially');
+            
+            const distances = [];
+            
+            // Calculate distances to all swing districts
+            Object.keys(districtData).forEach(function(district) {
+                const districtCenter = districtData[district].center;
+                if (districtCenter) {
+                    const distance = calculateDistance(userLat, userLng, districtCenter[0], districtCenter[1]);
+                    distances.push({
+                        district: district,
+                        distance: distance,
+                        rep: districtData[district].rep,
+                        party: districtData[district].party,
+                        action: districtData[district].action,
+                        pvi: districtData[district].pvi,
+                        cities: districtData[district].cities || []
+                    });
+                }
+            });
+            
+            // Sort by distance
+            distances.sort(function(a, b) {
+                return a.distance - b.distance;
+            });
+            
+            console.log('📊 Found', distances.length, 'total districts, will show first 3');
+            
+            // Show the closest districts section
+            document.getElementById('closestDistricts').style.display = 'block';
+            
+            // Display first 3 districts ONLY
+            displayDistrictBatch(distances, 0, 3, true);
+        }
+
+        function displayDistrictBatch(allDistricts, startIndex, count, isFirst) {
+            const container = document.getElementById('districtList');
+            
+            if (isFirst) {
+                // Clear container and add header for first batch
+                container.innerHTML = '';
+                const header = document.createElement('div');
+                header.style.cssText = 'text-align: center; margin-bottom: 20px; color: #333; font-size: 1.1rem;';
+                header.innerHTML = '<strong>Your Closest Swing Districts:</strong>';
+                container.appendChild(header);
+            }
+            
+            // Add districts for this batch
+            const endIndex = Math.min(startIndex + count, allDistricts.length);
+            
+            for (let i = startIndex; i < endIndex; i++) {
+                const district = allDistricts[i];
+                const cardBackground = district.party === 'D' ? 'rgba(173, 216, 230, 0.8)' : 'rgba(255, 182, 193, 0.8)';
+                const borderColor = district.party === 'D' ? '#4169E1' : '#DC143C';
+                
+                const districtCard = document.createElement('div');
+                districtCard.style.cssText = `
+                    display: flex; 
+                    justify-content: space-between; 
+                    align-items: flex-start; 
+                    padding: 15px; 
+                    margin: 10px 0; 
+                    background: ${cardBackground}; 
+                    border-radius: 10px; 
+                    border-left: 5px solid ${borderColor}; 
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.05); 
+                    transition: all 0.3s ease; 
+                    flex-direction: column;
+                `;
+                
+                // 1. District name - centered
+                const districtName = document.createElement('div');
+                districtName.style.cssText = 'text-align: center; font-weight: bold; font-size: 1.1rem; color: #333; margin-bottom: 5px;';
+                districtName.textContent = district.district;
+                districtCard.appendChild(districtName);
+                
+                // 2. Distance - centered
+                const distance = document.createElement('div');
+                distance.style.cssText = 'text-align: center; color: #667eea; font-weight: bold; font-size: 1.0rem; margin-bottom: 10px;';
+                distance.textContent = Math.round(district.distance) + ' miles';
+                districtCard.appendChild(distance);
+                
+                // 3. Representative and party - centered together
+                const repSection = document.createElement('div');
+                repSection.style.cssText = 'text-align: center; margin-bottom: 10px;';
+                
+                const repInfo = document.createElement('div');
+                repInfo.style.cssText = 'color: #666; display: flex; align-items: center; justify-content: center; gap: 8px;';
+                
+                const repName = document.createElement('span');
+                repName.textContent = district.rep;
+                repInfo.appendChild(repName);
+                
+                const partyColor = district.party === 'D' ? '#4169E1' : '#DC143C';
+                const partyBadge = document.createElement('span');
+                partyBadge.style.cssText = `background: ${partyColor}; color: white; padding: 3px 8px; border-radius: 15px; font-size: 0.8rem; font-weight: bold;`;
+                partyBadge.textContent = district.party;
+                repInfo.appendChild(partyBadge);
+                
+                repSection.appendChild(repInfo);
+                districtCard.appendChild(repSection);
+                
+                // 4. HOLD/FLIP and PVI together - centered
+                const badgeSection = document.createElement('div');
+                badgeSection.style.cssText = 'display: flex; align-items: center; gap: 10px; justify-content: center; margin-bottom: 10px;';
+                
+                const actionColor = district.action === 'FLIP' ? '#FF6B35' : '#4CAF50';
+                const actionBadge = document.createElement('span');
+                actionBadge.style.cssText = `background: ${actionColor}; color: white; padding: 4px 10px; border-radius: 15px; font-size: 0.9rem; font-weight: bold;`;
+                actionBadge.textContent = district.action;
+                badgeSection.appendChild(actionBadge);
+                
+                const pviBadge = document.createElement('span');
+                pviBadge.style.cssText = 'background: #f0f0f0; color: #666; padding: 4px 8px; border-radius: 10px; font-size: 0.9rem;';
+                pviBadge.textContent = district.pvi;
+                badgeSection.appendChild(pviBadge);
+                
+                districtCard.appendChild(badgeSection);
+                
+                // 5. Cities information - centered at bottom
+                if (district.cities && district.cities.length > 0) {
+                    const citiesBox = document.createElement('div');
+                    citiesBox.style.cssText = 'margin-top: 5px; padding: 8px 12px; background: rgba(255,255,255,0.8); border-radius: 8px; font-size: 0.85rem; color: #555; text-align: center;';
+                    
+                    const citiesLabel = document.createElement('div');
+                    citiesLabel.style.cssText = 'font-weight: 600; color: #333; margin-bottom: 3px;';
+                    citiesLabel.textContent = 'Biggest 5 Cities:';
+                    citiesBox.appendChild(citiesLabel);
+                    
+                    const citiesList = document.createElement('div');
+                    citiesList.style.cssText = 'line-height: 1.3;';
+                    citiesList.textContent = district.cities.join(', ');
+                    citiesBox.appendChild(citiesList);
+                    
+                    districtCard.appendChild(citiesBox);
+                }
+                
+                container.appendChild(districtCard);
+            }
+            
+            // Add "Show more" button if there are more districts to show
+            const remainingCount = allDistricts.length - endIndex;
+            if (remainingCount > 0) {
+                // Remove any existing "Show more" button
+                const existingButton = document.getElementById('showMoreButton');
+                if (existingButton) {
+                    existingButton.remove();
+                }
+                
+                const showMoreButton = document.createElement('button');
+                showMoreButton.id = 'showMoreButton';
+                showMoreButton.style.cssText = `
+                    display: block;
+                    margin: 20px auto;
+                    padding: 12px 24px;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    border: none;
+                    border-radius: 25px;
+                    font-size: 1rem;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+                `;
+                showMoreButton.textContent = `Show me the next ${Math.min(5, remainingCount)}`;
+                
+                // Add hover effect
+                showMoreButton.addEventListener('mouseenter', function() {
+                    this.style.transform = 'translateY(-2px)';
+                    this.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.4)';
+                });
+                
+                showMoreButton.addEventListener('mouseleave', function() {
+                    this.style.transform = 'translateY(0)';
+                    this.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.3)';
+                });
+                
+                showMoreButton.addEventListener('click', function() {
+                    displayDistrictBatch(allDistricts, endIndex, 5, false);
+                });
+                
+                container.appendChild(showMoreButton);
+            }
+        }
+
+        // Initialize the app
         document.addEventListener('DOMContentLoaded', function() {
             console.log('🚀 App initialized - Batched districts enabled!');
             
             const findClosestBtn = document.getElementById('findClosestBtn');
             if (findClosestBtn) {
                 findClosestBtn.addEventListener('click', function() {
-                    console.log('🎯 Location button clicked - will show only 3 districts');
-                    alert('Location functionality temporarily disabled while fixing the batched display. This will work once we complete the setup!');
+                    console.log('🎯 BATCHED BUTTON CLICKED - Will show only 3 districts');
+                    
+                    if (!navigator.geolocation) {
+                        alert('Geolocation is not supported by your browser');
+                        return;
+                    }
+                    
+                    // Show loading state
+                    this.disabled = true;
+                    this.innerHTML = '🔍 Finding your location...';
+                    
+                    navigator.geolocation.getCurrentPosition(
+                        function(position) {
+                            const userLat = position.coords.latitude;
+                            const userLng = position.coords.longitude;
+                            
+                            console.log('✅ BATCHED - User location found:', userLat, userLng);
+                            
+                            // Use the new batch display function
+                            showClosestDistrictsBatched(userLat, userLng);
+                            
+                            // Reset button
+                            findClosestBtn.disabled = false;
+                            findClosestBtn.innerHTML = '📍 What swing districts are closest to me?';
+                        },
+                        function(error) {
+                            console.log('❌ BATCHED - Geolocation error:', error);
+                            alert('Unable to get your location. Please make sure location access is enabled.');
+                            
+                            // Reset button
+                            findClosestBtn.disabled = false;
+                            findClosestBtn.innerHTML = '📍 What swing districts are closest to me?';
+                        },
+                        {
+                            enableHighAccuracy: true,
+                            timeout: 10000,
+                            maximumAge: 300000
+                        }
+                    );
                 });
             }
         });

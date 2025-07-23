@@ -1171,6 +1171,13 @@
                 html += '</div>';
             }
             
+            // Add "Hide districts" button
+            html += '<div style="text-align: center; margin: 10px 0;">';
+            html += '<button onclick="hideClosestDistricts()" style="background: #6c757d; color: white; padding: 10px 20px; border: none; border-radius: 8px; font-size: 0.9rem; cursor: pointer; font-weight: bold; transition: all 0.3s ease;">';
+            html += '🙈 Hide districts';
+            html += '</button>';
+            html += '</div>';
+            
             html += '</div>';
             
             return html;

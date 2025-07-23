@@ -436,13 +436,16 @@
             
             <!-- CLOSEST DISTRICTS FEATURE -->
             <div style="background: transparent; padding: 25px; margin: 30px 0; text-align: center; border-radius: 15px;">
-                <button id="findClosestBtn" onclick="findClosestDistricts()" style="background: #667eea; color: white; padding: 15px 30px; border: none; border-radius: 10px; font-size: 1.1rem; cursor: pointer; font-weight: bold; transition: all 0.3s ease; outline: none; margin: 0 10px 15px 10px;">
-                    📍 What swing districts are closest to me?
-                </button>
-                <br>
-                <a href="https://www.mobilize.us/ft6/?per_page=25&show_all_events=true&tag_ids=20036" target="_blank" style="background: #28a745; color: white; padding: 15px 30px; border: none; border-radius: 10px; font-size: 1.1rem; cursor: pointer; font-weight: bold; transition: all 0.3s ease; outline: none; text-decoration: none; display: inline-block; margin: 0 10px;">
-                    🗳️ See all upcoming Field Team 6 voter drives
-                </a>
+                <div style="margin-bottom: 15px;">
+                    <button id="findClosestBtn" onclick="findClosestDistricts()" style="background: #667eea; color: white; padding: 15px 30px; border: none; border-radius: 10px; font-size: 1.1rem; cursor: pointer; font-weight: bold; transition: all 0.3s ease; outline: none; margin: 0 10px 10px 10px; display: inline-block;">
+                        📍 What swing districts are closest to me?
+                    </button>
+                </div>
+                <div>
+                    <a href="https://www.mobilize.us/ft6/?per_page=25&show_all_events=true&tag_ids=20036" target="_blank" style="background: #28a745; color: white; padding: 15px 30px; border: none; border-radius: 10px; font-size: 1.1rem; cursor: pointer; font-weight: bold; transition: all 0.3s ease; outline: none; text-decoration: none; display: inline-block; margin: 0 10px;">
+                        🗳️ See all upcoming Field Team 6 voter drives
+                    </a>
+                </div>
                 <div id="closestDistricts" style="display: none; margin-top: 20px;"></div>
             </div>
         </div>

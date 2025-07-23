@@ -14,7 +14,6 @@ exports.handler = async (event, context) => {
   try {
     console.log('🔍 Fetching Field Team 6 events from Mobilize...');
     
-    // Fetch all current events, then filter by "Drive" tag
     const mobilizeUrl = 'https://api.mobilize.us/v1/organizations/ft6/events?timeslot_start=gte_now&per_page=100';
     
     const response = await fetch(mobilizeUrl, {
@@ -32,29 +31,56 @@ exports.handler = async (event, context) => {
     console.log(`📊 Raw events from API: ${data.data ? data.data.length : 0}`);
     
     const processedEvents = [];
+    let totalEvents = 0;
+    let driveEvents = 0;
+    let californiaEvents = 0;
+    let validEvents = 0;
     
     if (data.data && Array.isArray(data.data)) {
       data.data.forEach((event, index) => {
+        totalEvents++;
+        
+        // Log details for event 815530 specifically
+        if (event.id === 815530) {
+          console.log(`🎯 FOUND TARGET EVENT 815530!`);
+          console.log(`   Title: ${event.title}`);
+          console.log(`   Location: ${event.location ? `${event.location.locality}, ${event.location.region}` : 'No location'}`);
+          console.log(`   Tags: ${event.tags ? event.tags.map(tag => tag.name).join(', ') : 'No tags'}`);
+          console.log(`   Timeslots: ${event.timeslots ? event.timeslots.length : 0}`);
+        }
+        
         // Check if event has "Drive" tag
         const hasDriveTag = event.tags && event.tags.some(tag => 
           tag.name && tag.name.toLowerCase() === 'drive'
         );
         
-        if (!hasDriveTag) {
-          return; // Skip events without Drive tag
+        if (hasDriveTag) {
+          driveEvents++;
+          console.log(`🚗 Drive event #${driveEvents}: ${event.title || 'Untitled'}`);
+          
+          // Check if it's in California
+          if (event.location && event.location.region && 
+              (event.location.region.toUpperCase() === 'CA' || event.location.region.toUpperCase() === 'CALIFORNIA')) {
+            californiaEvents++;
+            console.log(`🌴 California drive: ${event.title} in ${event.location.locality}`);
+          }
         }
         
-        console.log(`🚗 Found Drive event: ${event.title || 'Untitled'}`);
+        if (!hasDriveTag) {
+          // Log a few non-drive events to see what tags they have
+          if (index < 5) {
+            console.log(`⚪ Non-drive event: ${event.title} - Tags: ${event.tags ? event.tags.map(tag => tag.name).join(', ') : 'No tags'}`);
+          }
+          return;
+        }
         
         if (!event.location || !event.timeslots || event.timeslots.length === 0) {
-          console.log(`⚠️ Skipping drive event: Missing location or timeslots`);
+          console.log(`⚠️ Skipping drive: Missing location or timeslots`);
           return;
         }
 
         const location = event.location;
         const firstTimeslot = event.timeslots[0];
-        
-        console.log(`📍 Drive location: ${location.locality}, ${location.region}`);
         
         const district = getDistrictFromState(location.region);
         
@@ -79,12 +105,35 @@ exports.handler = async (event, context) => {
 
         if (processedEvent.date && (processedEvent.coordinates || processedEvent.city)) {
           processedEvents.push(processedEvent);
-          console.log(`✅ Added drive: ${processedEvent.title} in ${processedEvent.district}`);
+          validEvents++;
+          
+          if (event.id === 815530) {
+            console.log(`✅ TARGET EVENT 815530 SUCCESSFULLY ADDED!`);
+            console.log(`   Final data: ${JSON.stringify(processedEvent, null, 2)}`);
+          }
+        } else {
+          if (event.id === 815530) {
+            console.log(`❌ TARGET EVENT 815530 REJECTED!`);
+            console.log(`   Date: ${processedEvent.date}`);
+            console.log(`   Coordinates: ${processedEvent.coordinates}`);
+            console.log(`   City: ${processedEvent.city}`);
+          }
         }
       });
     }
 
-    console.log(`📊 Processed ${processedEvents.length} voter drive events`);
+    console.log(`\n📊 === PROCESSING SUMMARY ===`);
+    console.log(`📊 Total events from API: ${totalEvents}`);
+    console.log(`🚗 Events with 'Drive' tag: ${driveEvents}`);
+    console.log(`🌴 California drive events: ${californiaEvents}`);
+    console.log(`✅ Valid processed events: ${validEvents}`);
+    
+    // Log all California events for debugging
+    const caEvents = processedEvents.filter(e => e.state && (e.state.toUpperCase() === 'CA' || e.state.toUpperCase() === 'CALIFORNIA'));
+    console.log(`\n🌴 California events being returned:`);
+    caEvents.forEach(event => {
+      console.log(`  - ${event.title} in ${event.city} (${event.coordinates})`);
+    });
 
     return {
       statusCode: 200,
@@ -93,7 +142,13 @@ exports.handler = async (event, context) => {
         success: true,
         count: processedEvents.length,
         events: processedEvents,
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
+        debugStats: {
+          totalEvents,
+          driveEvents,
+          californiaEvents,
+          validEvents
+        }
       })
     };
 

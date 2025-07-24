@@ -507,26 +507,42 @@
                 <h1 class="mobile-title" style="margin: 0; flex: 1; text-align: center; font-family: 'American Typewriter', 'Courier New', monospace; font-size: 70px; font-style: normal; font-weight: bold; letter-spacing: 2px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);">Drive Scout</h1>
                 <div class="mobile-emojis" style="font-size: 4.5rem;">🗺️🔍</div>
             </div>
-            <p>Planning your own voter drive? Fantastic!<br>
-            <strong>This is how we flip the House <span style="color: #4169E1; font-weight: bold;">BLUE</span> in 2026!</strong><br>
-            Just pick a swing House district near you.<br>
-            Drive Scout shows you the best campuses to hold a voter drive,<br>
-            and lets you know of upcoming drives in your area!</p>
+            <p>Planning a voter drive? <em>Great!</em><br>
+            <strong>This is how we flip the House in 2026.</strong><br>
+            And college campuses in swing districts are THE best places<br>
+            to register the voters we need to win.</p>
             
-            <!-- CLOSEST DISTRICTS FEATURE -->
+            <!-- PRIMARY ACTION BUTTON -->
             <div style="background: transparent; padding: 25px; margin: 30px 0; text-align: center; border-radius: 15px;">
-                <button id="findClosestBtn" onclick="findClosestDistricts()" style="background: #667eea; color: white; padding: 15px 30px; border: none; border-radius: 10px; font-size: 1.1rem; cursor: pointer; font-weight: bold; transition: all 0.3s ease; outline: none;">
-                    📍 What swing districts are closest to me?
+                <button id="findClosestCampusesBtn" onclick="findClosestCampuses()" style="background: #667eea; color: white; padding: 15px 30px; border: none; border-radius: 10px; font-size: 1.1rem; cursor: pointer; font-weight: bold; transition: all 0.3s ease; outline: none;">
+                    📍 Find my closest swing district campuses!
                 </button>
-                <br><br>
-<a href="https://www.mobilize.us/ft6/?per_page=25&show_all_events=true&tag_ids=20036" target="_blank" style="background: #28a745; color: white; padding: 15px 30px; border: none; border-radius: 10px; font-size: 1.1rem; cursor: pointer; font-weight: bold; transition: all 0.3s ease; outline: none; text-decoration: none; display: inline-block;">
-    🗳️ See all upcoming Field Team 6 voter drives
-</a>
-                <div id="closestDistricts" style="display: none; margin-top: 20px;"></div>
+                <div id="closestCampusesResult" style="display: none; margin-top: 20px;"></div>
             </div>
         </div>
 
-        <div class="controls">
+        <div class="college-list" id="collegeList" style="display: none;">
+            <h2 style="margin-bottom: 20px; color: #333;">Campus Details</h2>
+            <div id="collegeItems"></div>
+        </div>
+
+        <!-- Upcoming Drives Container - Show after college list -->
+        <div class="upcoming-drives-container" id="upcomingDrivesContainer" style="display: none;">
+            <div style="background: #e3f2fd; border-radius: 15px; padding: 25px; margin-bottom: 25px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); border-left: 5px solid #2196f3;">
+                <h3 style="color: #1976d2; margin-bottom: 20px; font-size: 1.4rem; display: flex; align-items: center; gap: 10px;">
+                    🗳️ Upcoming Field Team 6 Voter Drives in the Area
+                </h3>
+                <div id="upcomingDrivesList">
+                    <!-- Drives will be populated here -->
+                </div>
+                <div style="margin-top: 15px; text-align: center;">
+                    <a href="https://www.mobilize.us/ft6/?per_page=25&show_all_events=true&tag_ids=20036" target="_blank" 
+                       style="color: #1976d2; text-decoration: none; font-weight: bold; font-size: 0.9rem;">
+                        📅 View all Field Team 6 events on Mobilize →
+                    </a>
+                </div>
+            </div>
+        </div>
             <div class="form-row">
                 <div class="form-group">
                     <label for="stateSelect">Select State:</label>
@@ -3036,6 +3052,250 @@
                 init();
             }, 100);
         });
+
+        function findClosestCampuses() {
+            const btn = document.getElementById('findClosestCampusesBtn');
+            const resultContainer = document.getElementById('closestCampusesResult');
+            
+            // Show loading state
+            btn.innerHTML = '🔍 Finding your closest swing district...';
+            btn.disabled = true;
+            resultContainer.style.display = 'none';
+            
+            // Check if geolocation is available
+            if (!navigator.geolocation) {
+                alert('Geolocation is not supported by your browser');
+                btn.innerHTML = '📍 Find my closest swing district campuses!';
+                btn.disabled = false;
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    const userLat = position.coords.latitude;
+                    const userLng = position.coords.longitude;
+                    
+                    console.log('✅ User location for campus search:', userLat, userLng);
+                    
+                    // Find closest swing district
+                    let closestDistrict = null;
+                    let shortestDistance = Infinity;
+                    
+                    for (const [districtId, data] of Object.entries(districtData)) {
+                        const distance = calculateDistance(userLat, userLng, data.center[0], data.center[1]);
+                        if (distance < shortestDistance) {
+                            shortestDistance = distance;
+                            closestDistrict = districtId;
+                        }
+                    }
+                    
+                    if (closestDistrict) {
+                        console.log('🎯 Closest district:', closestDistrict, 'at', Math.round(shortestDistance), 'miles');
+                        
+                        // Show result
+                        const districtInfo = districtData[closestDistrict];
+                        resultContainer.innerHTML = `
+                            <div style="background: white; padding: 20px; border-radius: 10px; border-left: 5px solid #667eea; margin-top: 20px;">
+                                <div style="font-weight: bold; font-size: 1.2rem; color: #333; margin-bottom: 10px;">
+                                    Your closest swing district: ${closestDistrict}
+                                </div>
+                                <div style="color: #666; margin-bottom: 15px;">
+                                    ${Math.round(shortestDistance)} miles away • Rep. ${districtInfo.rep} (${districtInfo.party}) • ${districtInfo.action}
+                                </div>
+                                <div style="color: #555;">
+                                    Loading campuses and upcoming drives for ${closestDistrict}...
+                                </div>
+                            </div>
+                        `;
+                        resultContainer.style.display = 'block';
+                        
+                        // Extract state from district ID
+                        const state = Object.keys(districtMappings).find(s => 
+                            districtMappings[s].includes(closestDistrict)
+                        );
+                        
+                        if (state) {
+                            // Load campus data for this district
+                            displayColleges(state, closestDistrict);
+                            
+                            // Show the "For a Deeper Dive" section
+                            document.getElementById('deeperDiveSection').style.display = 'block';
+                        }
+                    }
+                    
+                    // Reset button
+                    btn.innerHTML = '📍 Find my closest swing district campuses!';
+                    btn.disabled = false;
+                },
+                function(error) {
+                    console.log('❌ Geolocation error:', error.message);
+                    
+                    let errorMessage = 'Unable to get your location. ';
+                    switch(error.code) {
+                        case 1: // PERMISSION_DENIED
+                            errorMessage += 'Location access was denied.';
+                            break;
+                        case 2: // POSITION_UNAVAILABLE
+                            errorMessage += 'Location information unavailable.';
+                            break;
+                        case 3: // TIMEOUT
+                            errorMessage += 'Location request timed out.';
+                            break;
+                        default:
+                            errorMessage += 'An unknown error occurred.';
+                    }
+                    
+                    alert(errorMessage + ' Please use the "Find Campuses in Other Swing Districts" section below to manually select a district.');
+                    
+                    // Reset button
+                    btn.innerHTML = '📍 Find my closest swing district campuses!';
+                    btn.disabled = false;
+                    
+                    // Show the manual selection section
+                    document.getElementById('deeperDiveSection').style.display = 'block';
+                },
+                {
+                    enableHighAccuracy: false,
+                    timeout: 15000,
+                    maximumAge: 30000
+                }
+            );
+        }
+
+        function findClosestDrives() {
+            const btn = document.getElementById('findClosestDrivesBtn');
+            
+            // Show loading state
+            btn.innerHTML = '🔍 Finding voter drives near you...';
+            btn.disabled = true;
+            
+            // Check if geolocation is available
+            if (!navigator.geolocation) {
+                alert('Geolocation is not supported by your browser');
+                btn.innerHTML = '🗳️ Field Team 6 voter drives closest to me';
+                btn.disabled = false;
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                async function(position) {
+                    const userLat = position.coords.latitude;
+                    const userLng = position.coords.longitude;
+                    
+                    try {
+                        // Fetch all voter drives
+                        const response = await fetch('/.netlify/functions/get-mobilize-events');
+                        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                        
+                        const data = await response.json();
+                        
+                        if (data.success && data.events) {
+                            // Calculate distances to all drives
+                            const drivesWithDistance = data.events
+                                .filter(drive => drive.coordinates)
+                                .map(drive => ({
+                                    ...drive,
+                                    distance: calculateDistance(
+                                        userLat, userLng,
+                                        drive.coordinates[0], drive.coordinates[1]
+                                    )
+                                }))
+                                .sort((a, b) => a.distance - b.distance)
+                                .slice(0, 5); // Top 5 closest
+                            
+                            if (drivesWithDistance.length > 0) {
+                                displayClosestDrives(drivesWithDistance);
+                            } else {
+                                document.getElementById('closestDrives').innerHTML = `
+                                    <div style="text-align: center; padding: 20px; color: #666; background: white; border-radius: 10px; margin-top: 20px;">
+                                        <div style="font-size: 2rem; margin-bottom: 10px;">📅</div>
+                                        <div>No upcoming Field Team 6 voter drives found with location data.</div>
+                                    </div>
+                                `;
+                                document.getElementById('closestDrives').style.display = 'block';
+                            }
+                        } else {
+                            throw new Error('No drives data received');
+                        }
+                    } catch (error) {
+                        console.error('❌ Error fetching drives:', error);
+                        document.getElementById('closestDrives').innerHTML = `
+                            <div style="text-align: center; padding: 20px; color: #666; background: white; border-radius: 10px; margin-top: 20px;">
+                                <div style="font-size: 2rem; margin-bottom: 10px;">⚠️</div>
+                                <div>Unable to load voter drives at this time.</div>
+                            </div>
+                        `;
+                        document.getElementById('closestDrives').style.display = 'block';
+                    }
+                    
+                    // Reset button
+                    btn.innerHTML = '🗳️ Field Team 6 voter drives closest to me';
+                    btn.disabled = false;
+                },
+                function(error) {
+                    console.log('❌ Geolocation error:', error.message);
+                    alert('Unable to get your location. Please enable location access to find nearby voter drives.');
+                    
+                    // Reset button
+                    btn.innerHTML = '🗳️ Field Team 6 voter drives closest to me';
+                    btn.disabled = false;
+                }
+            );
+        }
+
+        function displayClosestDrives(drives) {
+            const container = document.getElementById('closestDrives');
+            
+            let html = '<div style="margin-top: 20px;">';
+            html += '<h3 style="color: #333; margin-bottom: 20px;">🗳️ Closest Field Team 6 Voter Drives</h3>';
+            
+            drives.forEach(drive => {
+                const date = new Date(drive.date);
+                const formattedDate = date.toLocaleDateString('en-US', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                });
+                
+                html += `
+                    <div style="background: white; border-radius: 10px; padding: 18px; margin-bottom: 12px; border-left: 4px solid #28a745; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                        <div style="font-weight: bold; color: #333; margin-bottom: 8px; font-size: 1.1rem;">${drive.title}</div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                            <div>
+                                <div style="font-size: 0.8rem; color: #666; text-transform: uppercase; margin-bottom: 2px;">Location</div>
+                                <div style="font-weight: 500; color: #333;">${drive.location}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.8rem; color: #666; text-transform: uppercase; margin-bottom: 2px;">Distance</div>
+                                <div style="font-weight: 500; color: #333;">${Math.round(drive.distance)} miles away</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.8rem; color: #666; text-transform: uppercase; margin-bottom: 2px;">Date</div>
+                                <div style="font-weight: 500; color: #333;">${formattedDate}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.8rem; color: #666; text-transform: uppercase; margin-bottom: 2px;">Time</div>
+                                <div style="font-weight: 500; color: #333;">${drive.startTime || 'Time TBD'}</div>
+                            </div>
+                        </div>
+                        <div style="text-align: center;">
+                            <a href="${drive.mobilizeUrl}" target="_blank" 
+                               style="background: #28a745; color: white; padding: 8px 16px; 
+                                      border-radius: 6px; text-decoration: none; font-weight: bold; 
+                                      font-size: 0.9rem; display: inline-block;">
+                                📝 Sign Up on Mobilize
+                            </a>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            
+            container.innerHTML = html;
+            container.style.display = 'block';
+        }
 
         // Hide districts function
         function hideClosestDistricts() {

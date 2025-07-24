@@ -492,6 +492,17 @@
             font-style: italic;
         }
 
+        /* FORCE HIDE CONTROLS ON LANDING PAGE */
+        .controls {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            height: 0 !important;
+            overflow: hidden !important;
+            position: absolute !important;
+            left: -9999px !important;
+        }
+
         @media (max-width: 768px) {
             .drive-details {
                 grid-template-columns: 1fr;
@@ -3049,6 +3060,18 @@
         // Initialize the app when the page loads
         document.addEventListener('DOMContentLoaded', function() {
             console.log('DOM loaded, initializing app...');
+            
+            // FORCE HIDE the dropdown controls on landing page
+            const controlsSection = document.querySelector('.controls');
+            if (controlsSection) {
+                controlsSection.style.display = 'none';
+                controlsSection.style.visibility = 'hidden';
+                controlsSection.style.opacity = '0';
+                controlsSection.style.height = '0';
+                controlsSection.style.overflow = 'hidden';
+                console.log('✅ Forced controls section to be hidden');
+            }
+            
             setTimeout(function() {
                 init();
             }, 100);

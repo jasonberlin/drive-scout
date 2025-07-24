@@ -11,132 +11,152 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    console.log('🔍 Fetching Field Team 6 voter registration events...');
+    console.log('🔍 Aggressively searching for event 815530...');
     
-    const mobilizeUrl = 'https://api.mobilize.us/v1/events?organization=ft6&timeslot_start=gte_now&per_page=100';
+    let foundTarget = false;
+    let allEvents = [];
+    let totalChecked = 0;
     
-    const response = await fetch(mobilizeUrl, {
-      headers: {
-        'User-Agent': 'Drive-Scout-App/1.0',
-        'Accept': 'application/json'
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`Mobilize API responded with status: ${response.status}`);
-    }
-
-    const data = await response.json();
-    console.log(`📊 Raw events from API: ${data.data ? data.data.length : 0}`);
+    // Try multiple pages and date ranges
+    const searchConfigs = [
+      { url: 'https://api.mobilize.us/v1/events?organization=ft6&per_page=200&page=1', desc: 'Page 1, no date filter' },
+      { url: 'https://api.mobilize.us/v1/events?organization=ft6&per_page=200&page=2', desc: 'Page 2, no date filter' },
+      { url: 'https://api.mobilize.us/v1/events?organization=ft6&per_page=200&page=3', desc: 'Page 3, no date filter' },
+      { url: 'https://api.mobilize.us/v1/events?organization=ft6&timeslot_start=gte_2025-07-01&per_page=200', desc: 'Since July 2025' },
+      { url: 'https://api.mobilize.us/v1/events?organization=ft6&timeslot_start=gte_2025-06-01&per_page=200', desc: 'Since June 2025' },
+      { url: 'https://api.mobilize.us/v1/events?organization=ft6&timeslot_start=gte_now&per_page=200', desc: 'Future events only' }
+    ];
     
-    const processedEvents = [];
-    let voterRegEventCount = 0;
-    
-    if (data.data && Array.isArray(data.data)) {
-      data.data.forEach((event, index) => {
-        // Check for voter registration related tags
-        const hasVoterRegTag = event.tags && event.tags.some(tag => {
-          if (!tag.name) return false;
-          const tagName = tag.name.toLowerCase();
-          return tagName === 'voter registration' || 
-                 tagName === 'voter registration training' ||
-                 tagName === 'voter registration week' ||
-                 tagName.includes('voter registration');
+    for (const config of searchConfigs) {
+      try {
+        console.log(`🔍 Searching: ${config.desc}`);
+        
+        const response = await fetch(config.url, {
+          headers: {
+            'User-Agent': 'Drive-Scout-App/1.0',
+            'Accept': 'application/json'
+          }
         });
-        
-        if (!hasVoterRegTag) {
-          return; // Skip non-voter registration events
-        }
-        
-        voterRegEventCount++;
-        console.log(`🗳️ Found Voter Registration event #${voterRegEventCount}: ${event.title || 'Untitled'}`);
-        
-        // Log the specific event we're looking for
-        if (event.id === 815530) {
-          console.log(`🎯 FOUND TARGET EVENT 815530!`);
-          console.log(`   Title: ${event.title}`);
-          console.log(`   Location: ${event.location ? `${event.location.locality}, ${event.location.region}` : 'No location'}`);
-          console.log(`   Tags: ${event.tags ? event.tags.map(tag => tag.name).join(', ') : 'No tags'}`);
-        }
-        
-        if (!event.location || !event.timeslots || event.timeslots.length === 0) {
-          console.log(`⚠️ Skipping voter reg event: Missing location or timeslots`);
-          return;
-        }
 
-        const location = event.location;
-        const firstTimeslot = event.timeslots[0];
-        
-        console.log(`📍 Voter reg event location: ${location.locality}, ${location.region}`);
-        
-        const district = getDistrictFromState(location.region);
-        
-        const processedEvent = {
-          id: event.id,
-          title: event.title || 'Field Team 6 Voter Registration',
-          description: event.description || '',
-          location: location.venue || location.address_lines?.[0] || 'Location TBD',
-          city: location.locality,
-          state: location.region,
-          zipCode: location.postal_code,
-          district: district,
-          date: firstTimeslot.start_date ? firstTimeslot.start_date.toString().split('T')[0] : null,
-          startTime: firstTimeslot.start_date ? formatTime(firstTimeslot.start_date) : null,
-          endTime: firstTimeslot.end_date ? formatTime(firstTimeslot.end_date) : null,
-          coordinates: location.latitude && location.longitude ? 
-            [parseFloat(location.latitude), parseFloat(location.longitude)] : null,
-          mobilizeUrl: `https://www.mobilize.us/ft6/event/${event.id}/`,
-          isVirtual: location.venue && location.venue.toLowerCase().includes('virtual'),
-          tags: event.tags ? event.tags.map(tag => tag.name) : []
-        };
-
-        if (processedEvent.date && (processedEvent.coordinates || processedEvent.city)) {
-          processedEvents.push(processedEvent);
+        if (response.ok) {
+          const data = await response.json();
+          const eventCount = data.data ? data.data.length : 0;
+          totalChecked += eventCount;
           
-          if (event.id === 815530) {
-            console.log(`✅ TARGET EVENT 815530 SUCCESSFULLY ADDED!`);
-          }
+          console.log(`📊 ${config.desc}: ${eventCount} events`);
           
-          console.log(`✅ Added voter reg event: ${processedEvent.title} in ${processedEvent.district}`);
-        } else {
-          if (event.id === 815530) {
-            console.log(`❌ TARGET EVENT 815530 REJECTED: Missing date or location`);
+          if (data.data && Array.isArray(data.data)) {
+            // Look for our target event
+            const targetEvent = data.data.find(e => e.id === 815530);
+            if (targetEvent && !foundTarget) {
+              foundTarget = true;
+              console.log(`🎯 FOUND EVENT 815530 in ${config.desc}!`);
+              console.log(`   Title: ${targetEvent.title}`);
+              console.log(`   Tags: ${targetEvent.tags ? targetEvent.tags.map(tag => tag.name).join(', ') : 'No tags'}`);
+              console.log(`   Location: ${targetEvent.location ? `${targetEvent.location.locality}, ${targetEvent.location.region}` : 'No location'}`);
+              console.log(`   Date: ${targetEvent.timeslots ? targetEvent.timeslots[0]?.start_date : 'No timeslots'}`);
+              
+              // Add this event to our results
+              if (targetEvent.location && targetEvent.timeslots && targetEvent.timeslots.length > 0) {
+                const location = targetEvent.location;
+                const firstTimeslot = targetEvent.timeslots[0];
+                
+                allEvents.push({
+                  id: targetEvent.id,
+                  title: targetEvent.title || 'Field Team 6 Event',
+                  description: targetEvent.description || '',
+                  location: location.venue || location.address_lines?.[0] || 'Location TBD',
+                  city: location.locality,
+                  state: location.region,
+                  zipCode: location.postal_code,
+                  district: 'CA-??',
+                  date: firstTimeslot.start_date ? firstTimeslot.start_date.toString().split('T')[0] : null,
+                  startTime: firstTimeslot.start_date ? formatTime(firstTimeslot.start_date) : null,
+                  endTime: firstTimeslot.end_date ? formatTime(firstTimeslot.end_date) : null,
+                  coordinates: location.latitude && location.longitude ? 
+                    [parseFloat(location.latitude), parseFloat(location.longitude)] : null,
+                  mobilizeUrl: `https://www.mobilize.us/ft6/event/${targetEvent.id}/`,
+                  isVirtual: location.venue && location.venue.toLowerCase().includes('virtual'),
+                  tags: targetEvent.tags ? targetEvent.tags.map(tag => tag.name) : [],
+                  searchSource: config.desc
+                });
+              }
+            }
+            
+            // Also check for any California events in this batch
+            const caEventsInBatch = data.data.filter(e => 
+              e.location && e.location.region && 
+              (e.location.region.toUpperCase() === 'CA' || e.location.region.toUpperCase() === 'CALIFORNIA')
+            );
+            
+            if (caEventsInBatch.length > 0) {
+              console.log(`🌴 Found ${caEventsInBatch.length} CA events in ${config.desc}:`);
+              caEventsInBatch.forEach(caEvent => {
+                console.log(`  - ${caEvent.title} (ID: ${caEvent.id}) in ${caEvent.location.locality}`);
+                console.log(`    Tags: ${caEvent.tags ? caEvent.tags.map(tag => tag.name).join(', ') : 'No tags'}`);
+                
+                // Add CA events to our results if not already added
+                if (!allEvents.find(existing => existing.id === caEvent.id) && 
+                    caEvent.timeslots && caEvent.timeslots.length > 0) {
+                  const location = caEvent.location;
+                  const firstTimeslot = caEvent.timeslots[0];
+                  
+                  allEvents.push({
+                    id: caEvent.id,
+                    title: caEvent.title || 'Field Team 6 Event',
+                    description: caEvent.description || '',
+                    location: location.venue || location.address_lines?.[0] || 'Location TBD',
+                    city: location.locality,
+                    state: location.region,
+                    zipCode: location.postal_code,
+                    district: 'CA-??',
+                    date: firstTimeslot.start_date ? firstTimeslot.start_date.toString().split('T')[0] : null,
+                    startTime: firstTimeslot.start_date ? formatTime(firstTimeslot.start_date) : null,
+                    endTime: firstTimeslot.end_date ? formatTime(firstTimeslot.end_date) : null,
+                    coordinates: location.latitude && location.longitude ? 
+                      [parseFloat(location.latitude), parseFloat(location.longitude)] : null,
+                    mobilizeUrl: `https://www.mobilize.us/ft6/event/${caEvent.id}/`,
+                    isVirtual: location.venue && location.venue.toLowerCase().includes('virtual'),
+                    tags: caEvent.tags ? caEvent.tags.map(tag => tag.name) : [],
+                    searchSource: config.desc
+                  });
+                }
+              });
+            }
           }
         }
-      });
+        
+        // Small delay between requests
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+      } catch (error) {
+        console.log(`❌ Error with ${config.desc}: ${error.message}`);
+      }
     }
 
-    console.log(`📊 Found ${voterRegEventCount} total voter registration events`);
-    console.log(`📊 Processed ${processedEvents.length} valid voter registration events`);
-    
-    // Log California events specifically
-    const caEvents = processedEvents.filter(e => 
-      e.state && (e.state.toUpperCase() === 'CA' || e.state.toUpperCase() === 'CALIFORNIA')
-    );
-    console.log(`🌴 California voter registration events: ${caEvents.length}`);
-    caEvents.forEach(event => {
-      console.log(`  - ${event.title} in ${event.city} (ID: ${event.id})`);
-    });
+    console.log(`📊 Total events checked across all searches: ${totalChecked}`);
+    console.log(`🎯 Event 815530 found: ${foundTarget}`);
+    console.log(`🌴 Total California events found: ${allEvents.length}`);
 
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
         success: true,
-        count: processedEvents.length,
-        events: processedEvents,
+        count: allEvents.length,
+        events: allEvents,
         lastUpdated: new Date().toISOString(),
-        debugInfo: {
-          totalApiEvents: data.data ? data.data.length : 0,
-          voterRegistrationEvents: voterRegEventCount,
-          validProcessed: processedEvents.length,
-          californiaEvents: caEvents.length
+        searchResults: {
+          totalEventsChecked: totalChecked,
+          foundTargetEvent815530: foundTarget,
+          californiaEventsFound: allEvents.length,
+          searchNote: foundTarget ? 'Found target event!' : 'Target event not in API results'
         }
       })
     };
 
   } catch (error) {
-    console.error('❌ Error fetching Mobilize events:', error.message);
+    console.error('❌ Error in aggressive search:', error.message);
     
     return {
       statusCode: 500,
@@ -149,23 +169,6 @@ exports.handler = async (event, context) => {
     };
   }
 };
-
-function getDistrictFromState(region) {
-  if (!region) return 'Unknown';
-  
-  const state = region.toUpperCase().trim();
-  
-  switch (state) {
-    case 'AK': case 'ALASKA': return 'AK-AL';
-    case 'AZ': case 'ARIZONA': return 'AZ-??';
-    case 'CA': case 'CALIFORNIA': return 'CA-??';
-    case 'CO': case 'COLORADO': return 'CO-??';
-    case 'CT': case 'CONNECTICUT': return 'CT-??';
-    case 'FL': case 'FLORIDA': return 'FL-??';
-    case 'NV': case 'NEVADA': return 'NV-??';
-    default: return `${state}-??`;
-  }
-}
 
 function formatTime(dateString) {
   try {

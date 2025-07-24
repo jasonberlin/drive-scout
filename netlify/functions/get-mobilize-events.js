@@ -70,7 +70,11 @@ exports.handler = async (event, context) => {
         
         console.log(`📍 Voter drive location: ${location.locality}, ${location.region}`);
         
-        const district = getDistrictFromState(location.region);
+        // Check for district-specific tag (case-insensitive)
+        const hasCA45Tag = event.tags && event.tags.some(tag => {
+          if (!tag.name) return false;
+          return tag.name.toLowerCase() === 'ca45';
+        });
         
         const processedEvent = {
           id: event.id,
@@ -88,7 +92,9 @@ exports.handler = async (event, context) => {
             [parseFloat(location.latitude), parseFloat(location.longitude)] : null,
           mobilizeUrl: `https://www.mobilize.us/ft6/event/${event.id}/`,
           isVirtual: location.venue && location.venue.toLowerCase().includes('virtual'),
-          tags: event.tags ? event.tags.map(tag => tag.name) : []
+          tags: event.tags ? event.tags.map(tag => tag.name) : [],
+          hasCA45Tag: hasCA45Tag,
+          matchType: hasCA45Tag ? 'exact' : 'pending' // Will update with distance check
         };
 
         processedEvents.push(processedEvent);
@@ -102,13 +108,49 @@ exports.handler = async (event, context) => {
     console.log(`📊 Found ${voterDriveCount} total voter drives with 'drive' tag`);
     console.log(`📊 Processed ${processedEvents.length} valid voter drives`);
     
-    // Log California voter drives specifically
-    const caEvents = processedEvents.filter(e => 
-      e.state && (e.state.toUpperCase() === 'CA' || e.state.toUpperCase() === 'CALIFORNIA')
-    );
-    console.log(`🌴 California voter drives: ${caEvents.length}`);
-    caEvents.forEach(event => {
-      console.log(`  - ${event.title} in ${event.city} (ID: ${event.id})`);
+    // Now filter for CA-45 relevance
+    const ca45Center = [33.6846, -117.8265]; // Irvine area, center of CA-45
+    const ca45RelevantEvents = [];
+    
+    processedEvents.forEach(event => {
+      // Check if event has CA45 tag
+      if (event.hasCA45Tag) {
+        event.matchType = 'exact';
+        event.distance = 0;
+        ca45RelevantEvents.push(event);
+        console.log(`🎯 CA-45 tagged event: ${event.title} in ${event.city}`);
+      }
+      // Check if event is within 50 miles of CA-45 center
+      else if (event.coordinates) {
+        const distance = calculateDistance(
+          ca45Center[0], ca45Center[1],
+          event.coordinates[0], event.coordinates[1]
+        );
+        
+        if (distance <= 50) {
+          event.matchType = 'nearby';
+          event.distance = Math.round(distance);
+          ca45RelevantEvents.push(event);
+          console.log(`📍 Nearby event: ${event.title} in ${event.city} (${Math.round(distance)} miles from CA-45)`);
+        } else {
+          console.log(`❌ Too far: ${event.title} in ${event.city} (${Math.round(distance)} miles from CA-45)`);
+        }
+      } else {
+        console.log(`⚠️ No coordinates: ${event.title} in ${event.city} - cannot calculate distance`);
+      }
+    });
+    
+    // Sort CA-45 relevant events: exact matches first, then by distance
+    ca45RelevantEvents.sort((a, b) => {
+      if (a.matchType === 'exact' && b.matchType !== 'exact') return -1;
+      if (b.matchType === 'exact' && a.matchType !== 'exact') return 1;
+      return (a.distance || 0) - (b.distance || 0);
+    });
+    
+    console.log(`🌟 CA-45 relevant events: ${ca45RelevantEvents.length}`);
+    ca45RelevantEvents.forEach(event => {
+      const distanceText = event.matchType === 'exact' ? 'IN DISTRICT' : `${event.distance} miles`;
+      console.log(`  - ${event.title} in ${event.city} (${distanceText})`);
     });
 
     return {
@@ -116,15 +158,15 @@ exports.handler = async (event, context) => {
       headers,
       body: JSON.stringify({
         success: true,
-        count: processedEvents.length,
-        events: processedEvents,
+        count: ca45RelevantEvents.length,
+        events: ca45RelevantEvents,
         lastUpdated: new Date().toISOString(),
         debugInfo: {
           totalApiEvents: data.data ? data.data.length : 0,
           voterDriveEvents: voterDriveCount,
           validProcessed: processedEvents.length,
-          californiaEvents: caEvents.length,
-          foundTargetEvent815530: processedEvents.some(e => e.id === 815530)
+          ca45RelevantEvents: ca45RelevantEvents.length,
+          foundTargetEvent815530: ca45RelevantEvents.some(e => e.id === 815530)
         }
       })
     };
@@ -143,6 +185,17 @@ exports.handler = async (event, context) => {
     };
   }
 };
+
+function calculateDistance(lat1, lng1, lat2, lng2) {
+  const R = 3959; // Earth's radius in miles
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLng/2) * Math.sin(dLng/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
 
 function getDistrictFromState(region) {
   if (!region) return 'Unknown';

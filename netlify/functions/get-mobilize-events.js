@@ -39,83 +39,74 @@ exports.handler = async (event, context) => {
       data.data.forEach((event, index) => {
         console.log(`🔍 Event ${index + 1}: ${event.title || 'Untitled'} (ID: ${event.id})`);
         
+        // Only include events with "drive" tag (actual voter registration drives)
+        const hasDriveTag = event.tags && event.tags.some(tag => {
+          if (!tag.name) return false;
+          return tag.name.toLowerCase() === 'drive';
+        });
+        
+        if (!hasDriveTag) {
+          return; // Skip events without drive tag
+        }
+        
+        voterDriveCount++;
+        console.log(`🚗 Voter Drive #${voterDriveCount}: ${event.title} (ID: ${event.id})`);
+        console.log(`   Tags: ${event.tags ? event.tags.map(tag => tag.name).join(', ') : 'No tags'}`);
+        
         // Check specifically for event 815530
         if (event.id === 815530) {
           console.log(`🎯 FOUND TARGET EVENT 815530!`);
           console.log(`   Title: ${event.title}`);
           console.log(`   Location: ${event.location ? `${event.location.locality}, ${event.location.region}` : 'No location'}`);
-          console.log(`   Tags: ${event.tags ? event.tags.map(tag => tag.name).join(', ') : 'No tags'}`);
         }
-        
-        // Look for voter registration related events (be very inclusive)
-        const hasVoterTag = event.tags && event.tags.some(tag => {
-          if (!tag.name) return false;
-          const tagName = tag.name.toLowerCase();
-          return tagName.includes('voter') || 
-                 tagName.includes('registration') ||
-                 tagName.includes('drive') ||
-                 tagName.includes('canvass') ||
-                 tagName.includes('gotv') ||
-                 tagName.includes('get out the vote');
-        });
-        
-        // Also include events with "voter registration" in title or description
-        const hasVoterContent = (event.title && event.title.toLowerCase().includes('voter')) ||
-                               (event.description && event.description.toLowerCase().includes('voter')) ||
-                               (event.event_type && event.event_type.toLowerCase().includes('voter'));
-        
-        if (hasVoterTag || hasVoterContent || event.id === 815530) {
-          voterDriveCount++;
-          console.log(`🗳️ Voter-related event #${voterDriveCount}: ${event.title} (ID: ${event.id})`);
-          
-          if (!event.location || !event.timeslots || event.timeslots.length === 0) {
-            console.log(`⚠️ Skipping voter event: Missing location or timeslots`);
-            return;
-          }
 
-          const location = event.location;
-          const firstTimeslot = event.timeslots[0];
-          
-          console.log(`📍 Voter event location: ${location.locality}, ${location.region}`);
-          
-          const district = getDistrictFromState(location.region);
-          
-          const processedEvent = {
-            id: event.id,
-            title: event.title || 'Field Team 6 Event',
-            description: event.description || '',
-            location: location.venue || location.address_lines?.[0] || 'Location TBD',
-            city: location.locality,
-            state: location.region,
-            zipCode: location.postal_code,
-            district: district,
-            date: firstTimeslot.start_date ? firstTimeslot.start_date.toString().split('T')[0] : null,
-            startTime: firstTimeslot.start_date ? formatTime(firstTimeslot.start_date) : null,
-            endTime: firstTimeslot.end_date ? formatTime(firstTimeslot.end_date) : null,
-            coordinates: location.latitude && location.longitude ? 
-              [parseFloat(location.latitude), parseFloat(location.longitude)] : null,
-            mobilizeUrl: `https://www.mobilize.us/ft6/event/${event.id}/`,
-            isVirtual: location.venue && location.venue.toLowerCase().includes('virtual'),
-            tags: event.tags ? event.tags.map(tag => tag.name) : []
-          };
+        if (!event.location || !event.timeslots || event.timeslots.length === 0) {
+          console.log(`⚠️ Skipping voter drive: Missing location or timeslots`);
+          return;
+        }
 
-          processedEvents.push(processedEvent);
-          
-          if (event.id === 815530) {
-            console.log(`✅ TARGET EVENT 815530 SUCCESSFULLY ADDED!`);
-          }
+        const location = event.location;
+        const firstTimeslot = event.timeslots[0];
+        
+        console.log(`📍 Voter drive location: ${location.locality}, ${location.region}`);
+        
+        const district = getDistrictFromState(location.region);
+        
+        const processedEvent = {
+          id: event.id,
+          title: event.title || 'Field Team 6 Voter Drive',
+          description: event.description || '',
+          location: location.venue || location.address_lines?.[0] || 'Location TBD',
+          city: location.locality,
+          state: location.region,
+          zipCode: location.postal_code,
+          district: district,
+          date: firstTimeslot.start_date ? firstTimeslot.start_date.toString().split('T')[0] : null,
+          startTime: firstTimeslot.start_date ? formatTime(firstTimeslot.start_date) : null,
+          endTime: firstTimeslot.end_date ? formatTime(firstTimeslot.end_date) : null,
+          coordinates: location.latitude && location.longitude ? 
+            [parseFloat(location.latitude), parseFloat(location.longitude)] : null,
+          mobilizeUrl: `https://www.mobilize.us/ft6/event/${event.id}/`,
+          isVirtual: location.venue && location.venue.toLowerCase().includes('virtual'),
+          tags: event.tags ? event.tags.map(tag => tag.name) : []
+        };
+
+        processedEvents.push(processedEvent);
+        
+        if (event.id === 815530) {
+          console.log(`✅ TARGET EVENT 815530 SUCCESSFULLY ADDED!`);
         }
       });
     }
 
-    console.log(`📊 Found ${voterDriveCount} total voter-related events`);
-    console.log(`📊 Processed ${processedEvents.length} valid events`);
+    console.log(`📊 Found ${voterDriveCount} total voter drives with 'drive' tag`);
+    console.log(`📊 Processed ${processedEvents.length} valid voter drives`);
     
-    // Log California events specifically
+    // Log California voter drives specifically
     const caEvents = processedEvents.filter(e => 
       e.state && (e.state.toUpperCase() === 'CA' || e.state.toUpperCase() === 'CALIFORNIA')
     );
-    console.log(`🌴 California voter events: ${caEvents.length}`);
+    console.log(`🌴 California voter drives: ${caEvents.length}`);
     caEvents.forEach(event => {
       console.log(`  - ${event.title} in ${event.city} (ID: ${event.id})`);
     });
@@ -130,7 +121,7 @@ exports.handler = async (event, context) => {
         lastUpdated: new Date().toISOString(),
         debugInfo: {
           totalApiEvents: data.data ? data.data.length : 0,
-          voterRelatedEvents: voterDriveCount,
+          voterDriveEvents: voterDriveCount,
           validProcessed: processedEvents.length,
           californiaEvents: caEvents.length,
           foundTargetEvent815530: processedEvents.some(e => e.id === 815530)

@@ -1378,48 +1378,117 @@
         }
 
         async function displayCollegesInstantly(state, district) {
-            // INSTANTLY show map and colleges without the "Campus Details" header box
-            await loadDistrictData(district);
+            console.log('🚀 Starting instant display for:', district);
             
-            const collegeDataForDistrict = collegeData[state] && collegeData[state][district] ? collegeData[state][district] : [];
-            
-            let allColleges = [];
-            let withinColleges = [];
-            let nearColleges = [];
-
-            if (Array.isArray(collegeDataForDistrict)) {
-                allColleges = collegeDataForDistrict;
-                withinColleges = collegeDataForDistrict;
-            } else if (collegeDataForDistrict.within || collegeDataForDistrict.near) {
-                withinColleges = collegeDataForDistrict.within || [];
-                nearColleges = collegeDataForDistrict.near || [];
-                allColleges = withinColleges.concat(nearColleges);
+            // Update the loading message to show progress
+            const resultContainer = document.getElementById('closestCampusesResult');
+            const loadingDiv = resultContainer.querySelector('div:last-child');
+            if (loadingDiv) {
+                loadingDiv.innerHTML = 'Loading data...';
             }
             
-            if (allColleges.length === 0) {
-                showNoData(state, district);
-            } else {
-                updateStats(allColleges);
+            try {
+                // INSTANTLY show map and colleges without the "Campus Details" header box
+                await loadDistrictData(district);
+                console.log('✅ District data loaded for:', district);
                 
-                document.getElementById('stats').style.display = 'grid';
+                const collegeDataForDistrict = collegeData[state] && collegeData[state][district] ? collegeData[state][district] : [];
+                console.log('📊 College data found:', collegeDataForDistrict.length || 0, 'entries');
+                
+                let allColleges = [];
+                let withinColleges = [];
+                let nearColleges = [];
+
+                if (Array.isArray(collegeDataForDistrict)) {
+                    allColleges = collegeDataForDistrict;
+                    withinColleges = collegeDataForDistrict;
+                } else if (collegeDataForDistrict.within || collegeDataForDistrict.near) {
+                    withinColleges = collegeDataForDistrict.within || [];
+                    nearColleges = collegeDataForDistrict.near || [];
+                    allColleges = withinColleges.concat(nearColleges);
+                }
+                
+                console.log('📈 Total colleges to display:', allColleges.length);
+                
+                if (allColleges.length === 0) {
+                    console.log('⚠️ No college data found, showing placeholder');
+                    showNoDataButContinue(state, district);
+                } else {
+                    console.log('✅ Displaying colleges');
+                    updateStats(allColleges);
+                    
+                    document.getElementById('stats').style.display = 'grid';
+                    document.getElementById('mapContainer').style.display = 'block';
+                    
+                    // Show college list but WITHOUT the "Campus Details" header box
+                    displayCollegeListDirectly(district, withinColleges, nearColleges);
+                    
+                    initializeMap();
+                    
+                    // Load district boundaries for the selected state
+                    await loadDistrictBoundaries(state);
+                    
+                    setTimeout(function() {
+                        addMarkersToMap(allColleges);
+                        // Always update district boundaries to highlight the correct district
+                        addDistrictBoundariesToMap(district);
+                    }, 200);
+                    
+                    // Update loading message to completion
+                    if (loadingDiv) {
+                        loadingDiv.innerHTML = `✅ Found ${allColleges.length} campuses in ${district}`;
+                    }
+                }
+                
+                // Always try to check upcoming drives regardless of college data
+                console.log('🗳️ Checking upcoming drives...');
+                checkUpcomingDrives(district);
+                
+            } catch (error) {
+                console.error('❌ Error in displayCollegesInstantly:', error);
+                
+                // Show error message but continue
+                if (loadingDiv) {
+                    loadingDiv.innerHTML = `⚠️ Having trouble loading data for ${district}. Showing map anyway...`;
+                }
+                
+                // Still show the map even if data fails
                 document.getElementById('mapContainer').style.display = 'block';
-                
-                // Show college list but WITHOUT the "Campus Details" header box
-                displayCollegeListDirectly(district, withinColleges, nearColleges);
-                
                 initializeMap();
                 
-                // Load district boundaries for the selected state
-                await loadDistrictBoundaries(state);
-                
-                setTimeout(function() {
-                    addMarkersToMap(allColleges);
-                    // Always update district boundaries to highlight the correct district
-                    addDistrictBoundariesToMap(district);
-                }, 200);
-                
-                checkUpcomingDrives(district);
+                // Try to load district boundaries anyway
+                try {
+                    await loadDistrictBoundaries(state);
+                    setTimeout(function() {
+                        addDistrictBoundariesToMap(district);
+                    }, 200);
+                } catch (boundaryError) {
+                    console.error('❌ Boundary loading also failed:', boundaryError);
+                }
             }
+        }
+
+        function showNoDataButContinue(state, district) {
+            console.log('📝 Showing no data message but continuing with map');
+            
+            // Show a brief message about no college data but continue
+            const container = document.getElementById('collegeItems');
+            container.innerHTML = `
+                <div style="text-align: center; padding: 30px; color: white; background: rgba(255,255,255,0.1); border-radius: 10px; margin: 20px 0;">
+                    <h3 style="color: white; margin-bottom: 15px;">📊 ${district} Data</h3>
+                    <p style="margin-bottom: 15px;">College data for ${district} is being prepared.</p>
+                    <p style="font-size: 0.9rem; opacity: 0.8;">Map and district boundaries are shown below.</p>
+                </div>
+            `;
+            
+            // Still show the map
+            document.getElementById('collegeList').style.display = 'block';
+            document.getElementById('collegeList').style.background = 'transparent';
+            document.getElementById('collegeList').style.boxShadow = 'none';
+            document.getElementById('mapContainer').style.display = 'block';
+            
+            // Initialize map anyway
+            initializeMap();
         }
 
         function displayCollegeListDirectly(district, withinColleges, nearColleges) {

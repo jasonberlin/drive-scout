@@ -108,8 +108,10 @@ exports.handler = async (event, context) => {
     console.log(`📊 Found ${voterDriveCount} total voter drives with 'drive' tag`);
     console.log(`📊 Processed ${processedEvents.length} valid voter drives`);
     
-    // Now filter for CA-45 relevance
-    const ca45Center = [33.6846, -117.8265]; // Irvine area, center of CA-45
+    // Now filter for CA-45 relevance using CORRECT district center
+    // CA-45 actually includes Garden Grove, Westminster, Buena Park, Fountain Valley, etc.
+    // NOT Irvine/Tustin/Lake Forest (those are in other districts)
+    const ca45Center = [33.7838, -118.0814]; // Center of Garden Grove/Westminster area
     const ca45RelevantEvents = [];
     
     processedEvents.forEach(event => {

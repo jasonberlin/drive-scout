@@ -1377,10 +1377,8 @@
             }
         }
 
-        async function displayColleges(state, district) {
-            document.getElementById('collegeItems').innerHTML = '<div class="loading"><h3>Loading ' + district + ' college data...</h3><p>Please wait while we fetch the latest information.</p></div>';
-            document.getElementById('collegeList').style.display = 'block';
-
+        async function displayCollegesInstantly(state, district) {
+            // INSTANTLY show map and colleges without the "Campus Details" header box
             await loadDistrictData(district);
             
             const collegeDataForDistrict = collegeData[state] && collegeData[state][district] ? collegeData[state][district] : [];
@@ -1405,7 +1403,9 @@
                 
                 document.getElementById('stats').style.display = 'grid';
                 document.getElementById('mapContainer').style.display = 'block';
-                document.getElementById('collegeList').style.display = 'block';
+                
+                // Show college list but WITHOUT the "Campus Details" header box
+                displayCollegeListDirectly(district, withinColleges, nearColleges);
                 
                 initializeMap();
                 
@@ -1418,9 +1418,41 @@
                     addDistrictBoundariesToMap(district);
                 }, 200);
                 
-                displayCollegeListWithSections(district, withinColleges, nearColleges);
                 checkUpcomingDrives(district);
             }
+        }
+
+        function displayCollegeListDirectly(district, withinColleges, nearColleges) {
+            // Show colleges DIRECTLY without the white container box and "Campus Details" header
+            const container = document.getElementById('collegeItems');
+            container.innerHTML = '';
+
+            if (withinColleges.length > 0) {
+                const withinSection = document.createElement('div');
+                withinSection.innerHTML = '<h2 style="margin-bottom: 20px; color: white; border-bottom: 2px solid #667eea; padding-bottom: 10px;">COLLEGES IN ' + district + '</h2>';
+                container.appendChild(withinSection);
+
+                withinColleges.forEach(function(college) {
+                    const collegeElement = createCollegeElement(college);
+                    container.appendChild(collegeElement);
+                });
+            }
+
+            if (nearColleges.length > 0) {
+                const nearSection = document.createElement('div');
+                nearSection.innerHTML = '<h2 style="margin: 40px 0 20px 0; color: white; border-bottom: 2px solid #764ba2; padding-bottom: 10px;">COLLEGES NEAR ' + district + '</h2>';
+                container.appendChild(nearSection);
+
+                nearColleges.forEach(function(college) {
+                    const collegeElement = createCollegeElement(college, true);
+                    container.appendChild(collegeElement);
+                });
+            }
+            
+            // Show the container directly without the white background wrapper
+            document.getElementById('collegeList').style.display = 'block';
+            document.getElementById('collegeList').style.background = 'transparent';
+            document.getElementById('collegeList').style.boxShadow = 'none';
         }
 
         function findClosestCampuses() {
@@ -1462,10 +1494,13 @@
                     if (closestDistrict) {
                         console.log('🎯 Closest district:', closestDistrict, 'at', Math.round(shortestDistance), 'miles');
                         
-                        // Show result
+                        // Show result with party-colored background
                         const districtInfo = districtData[closestDistrict];
+                        const partyBackgroundColor = districtInfo.party === 'D' ? '#e3f2fd' : '#ffebee'; // Pale blue for Dem, pale red for Rep
+                        const partyBorderColor = districtInfo.party === 'D' ? '#2196f3' : '#f44336'; // Blue border for Dem, red for Rep
+                        
                         resultContainer.innerHTML = `
-                            <div style="background: white; padding: 20px; border-radius: 10px; border-left: 5px solid #667eea; margin-top: 20px;">
+                            <div style="background: ${partyBackgroundColor}; padding: 20px; border-radius: 10px; border-left: 5px solid ${partyBorderColor}; margin-top: 20px;">
                                 <div style="font-weight: bold; font-size: 1.2rem; color: #333; margin-bottom: 10px;">
                                     Your closest swing district: ${closestDistrict}
                                 </div>
@@ -1473,7 +1508,7 @@
                                     ${Math.round(shortestDistance)} miles away • Rep. ${districtInfo.rep} (${districtInfo.party}) • ${districtInfo.action}
                                 </div>
                                 <div style="color: #555;">
-                                    Loading campuses and upcoming drives for ${closestDistrict}...
+                                    Loading campuses for ${closestDistrict}...
                                 </div>
                             </div>
                         `;
@@ -1485,8 +1520,8 @@
                         );
                         
                         if (state) {
-                            // Load campus data for this district
-                            displayColleges(state, closestDistrict);
+                            // Load campus data for this district INSTANTLY
+                            displayCollegesInstantly(state, closestDistrict);
                         }
                     }
                     

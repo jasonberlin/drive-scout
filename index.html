@@ -765,9 +765,6 @@
                                 <div style="color: #666; margin-bottom: 15px;">
                                     ${Math.round(shortestDistance)} miles away • Rep. ${districtInfo.rep} (${districtInfo.party}) • ${districtInfo.action}
                                 </div>
-                                <div style="color: #555;">
-                                    Loading campuses for ${closestDistrict}...
-                                </div>
                             </div>
                         `;
                         resultContainer.style.display = 'block';
@@ -1328,21 +1325,168 @@
             document.getElementById('collegeList').style.display = 'block';
         }
 
-        function addDistrictBoundariesToMap(district) {
+        function addDistrictBoundariesToMap(selectedDistrict = null) {
             if (!map || !districtBoundaries || !districtBoundariesVisible) {
                 return;
             }
             
             // Store the selected district for toggle functionality
-            currentSelectedDistrict = district;
+            currentSelectedDistrict = selectedDistrict;
             
-            // Remove existing district boundaries to ensure clean refresh
+            // ALWAYS remove existing district boundaries to ensure clean refresh
             if (map.districtLayer) {
                 map.removeLayer(map.districtLayer);
                 map.districtLayer = null;
             }
             
-            console.log('📍 Adding district boundaries to map with', district, 'highlighted');
+            // Style function for district boundaries
+            function districtStyle(feature) {
+                const districtId = getDistrictId(feature);
+                const districtInfo = districtData[districtId];
+                const isSelected = selectedDistrict && districtId === selectedDistrict;
+                
+                // Default styling
+                let color = '#666666';
+                let fillColor = 'transparent';
+                let weight = 2;
+                let opacity = 0.3; // Reduced opacity for non-selected districts
+                let fillOpacity = 0;
+                
+                // Color code based on party and action if this is a swing district
+                if (districtInfo) {
+                    if (districtInfo.action === 'FLIP') {
+                        color = '#FF6B35'; // Orange for flip districts
+                        weight = 3;
+                    } else if (districtInfo.action === 'HOLD') {
+                        color = districtInfo.party === 'D' ? '#4169E1' : '#DC143C'; // Blue for Dem, Red for Rep
+                        weight = 3;
+                    }
+                    opacity = 0.6; // Higher opacity for swing districts
+                }
+                
+                // HIGHLIGHT SELECTED DISTRICT
+                if (isSelected) {
+                    weight = 5; // Thicker border
+                    opacity = 1.0; // Full opacity
+                    fillOpacity = 0.15; // Light fill to highlight the area
+                    fillColor = color; // Fill with the same color as border
+                }
+                
+                return {
+                    color: color,
+                    weight: weight,
+                    opacity: opacity,
+                    fillColor: fillColor,
+                    fillOpacity: fillOpacity,
+                    dashArray: isSelected ? '' : '',
+                    className: isSelected ? 'selected-district' : ''
+                };
+            }
+            
+            // Create popup content for districts
+            function onEachDistrict(feature, layer) {
+                const districtId = getDistrictId(feature);
+                const districtInfo = districtData[districtId];
+                const isSelected = selectedDistrict && districtId === selectedDistrict;
+                
+                let popupContent = '<div style="font-weight: bold; margin-bottom: 8px; font-size: 1.1rem;">' + districtId;
+                if (isSelected) {
+                    popupContent += ' <span style="background: #4CAF50; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem;">SELECTED</span>';
+                }
+                popupContent += '</div>';
+                
+                if (districtInfo) {
+                    const partyColor = districtInfo.party === 'D' ? '#4169E1' : '#DC143C';
+                    const actionColor = districtInfo.action === 'FLIP' ? '#FF6B35' : '#4CAF50';
+                    
+                    popupContent += '<div style="margin-bottom: 4px;"><strong>Representative:</strong> ' + districtInfo.rep + '</div>';
+                    popupContent += '<div style="margin-bottom: 8px;">';
+                    popupContent += '<span style="background: ' + partyColor + '; color: white; padding: 3px 8px; border-radius: 15px; font-size: 0.8rem; margin-right: 5px;">' + districtInfo.party + '</span>';
+                    popupContent += '<span style="background: ' + actionColor + '; color: white; padding: 4px 10px; border-radius: 15px; font-size: 0.9rem;">' + districtInfo.action + '</span>';
+                    popupContent += '</div>';
+                    popupContent += '<div><strong>Cook PVI:</strong> ' + districtInfo.pvi + '</div>';
+                    
+                    if (districtInfo.cities) {
+                        popupContent += '<div style="margin-top: 8px;"><strong>Major Cities:</strong><br>' + districtInfo.cities.slice(0, 3).join(', ') + '</div>';
+                    }
+                } else {
+                    popupContent += '<div style="color: #666;">Not a swing district</div>';
+                }
+                
+                layer.bindPopup(popupContent, { maxWidth: 300 });
+                
+                // Add hover effects
+                layer.on({
+                    mouseover: function(e) {
+                        if (!isSelected) {
+                            layer.setStyle({
+                                weight: 4,
+                                opacity: 0.8
+                            });
+                        }
+                    },
+                    mouseout: function(e) {
+                        if (!isSelected) {
+                            // Reset to original style
+                            const originalStyle = districtStyle(feature);
+                            layer.setStyle(originalStyle);
+                        }
+                    }
+                });
+            }
+            
+            // Add the district boundaries to the map
+            map.districtLayer = L.geoJSON(districtBoundaries.data, {
+                style: districtStyle,
+                onEachFeature: onEachDistrict
+            }).addTo(map);
+            
+            console.log('📍 District boundaries added to map' + (selectedDistrict ? ' with ' + selectedDistrict + ' highlighted' : ''));
+            
+            // Update toggle button state
+            updateDistrictToggleButton();
+        }
+        
+        function getDistrictId(feature) {
+            // Extract district ID from the GeoJSON feature properties
+            // Census Bureau files typically use different field names
+            const props = feature.properties;
+            
+            // Try common field names used by Census Bureau
+            if (props.GEOID) {
+                // GEOID format is typically SSFP where SS = state FIPS, FP = district number
+                const stateCode = props.GEOID.substring(0, 2);
+                const districtNum = props.GEOID.substring(2);
+                return getStateAbbrev(stateCode) + '-' + districtNum.padStart(2, '0');
+            }
+            
+            if (props.CD119FP && props.STATEFP) {
+                return getStateAbbrev(props.STATEFP) + '-' + props.CD119FP.padStart(2, '0');
+            }
+            
+            // Fallback - try to extract from name fields
+            if (props.NAMELSAD) {
+                // Example: "Congressional District 1"
+                const match = props.NAMELSAD.match(/(\d+)/);
+                if (match) {
+                    return getStateAbbrev(props.STATEFP || '06') + '-' + match[1].padStart(2, '0');
+                }
+            }
+            
+            return 'UNKNOWN';
+        }
+        
+        function getStateAbbrev(fipsCode) {
+            const fipsToState = {
+                '02': 'AK', '04': 'AZ', '06': 'CA', '08': 'CO', 
+                '09': 'CT', '12': 'FL', '17': 'IL', '18': 'IN',
+                '19': 'IA', '23': 'ME', '24': 'MD', '26': 'MI',
+                '27': 'MN', '30': 'MT', '31': 'NE', '32': 'NV',
+                '33': 'NH', '34': 'NJ', '35': 'NM', '36': 'NY',
+                '37': 'NC', '39': 'OH', '41': 'OR', '42': 'PA',
+                '48': 'TX', '51': 'VA', '53': 'WA', '55': 'WI'
+            };
+            return fipsToState[fipsCode] || 'XX';
         }
 
         function toggleDistrictBoundaries() {

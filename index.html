@@ -492,17 +492,6 @@
             font-style: italic;
         }
 
-        /* FORCE HIDE CONTROLS ON LANDING PAGE */
-        .controls {
-            display: none !important;
-            visibility: hidden !important;
-            opacity: 0 !important;
-            height: 0 !important;
-            overflow: hidden !important;
-            position: absolute !important;
-            left: -9999px !important;
-        }
-
         @media (max-width: 768px) {
             .drive-details {
                 grid-template-columns: 1fr;
@@ -623,6 +612,46 @@
         <div class="college-list" id="collegeList" style="display: none;">
             <h2 style="margin-bottom: 20px; color: #333;">Campus Details</h2>
             <div id="collegeItems"></div>
+        </div>
+        
+        <!-- DROPDOWNS AT THE BOTTOM - HIDDEN FOR NOW -->
+        <div style="display: none; visibility: hidden; position: absolute; left: -10000px; top: -10000px;">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="stateSelect">Select State:</label>
+                    <select id="stateSelect">
+                        <option value="">Choose a state...</option>
+                        <option value="Alaska">Alaska</option>
+                        <option value="Arizona">Arizona</option>
+                        <option value="California">California</option>
+                        <option value="Colorado">Colorado</option>
+                        <option value="Connecticut">Connecticut</option>
+                        <option value="Florida">Florida</option>
+                        <option value="Nevada">Nevada</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="districtSelect">Select Congressional District:</label>
+                    <select id="districtSelect" disabled>
+                        <option value="">First select a state...</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="stats" id="stats" style="display: none;">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalColleges">0</div>
+                    <div class="stat-label">Total Colleges</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="highSuitability">0</div>
+                    <div class="stat-label">High Suitability</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="totalEnrollment">0</div>
+                    <div class="stat-label">Total Enrollment</div>
+                </div>
+            </div>
         </div>
     </div>
 

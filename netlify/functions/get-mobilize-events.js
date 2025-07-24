@@ -70,6 +70,8 @@ exports.handler = async (event, context) => {
         
         console.log(`📍 Voter drive location: ${location.locality}, ${location.region}`);
         
+        const district = getDistrictFromState(location.region);
+        
         // Check for district-specific tag (case-insensitive)
         const hasCA45Tag = event.tags && event.tags.some(tag => {
           if (!tag.name) return false;

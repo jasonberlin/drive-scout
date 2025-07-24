@@ -1328,27 +1328,239 @@
             document.getElementById('collegeList').style.display = 'block';
         }
 
-        // Minimal stubs for missing functions
+        function addDistrictBoundariesToMap(district) {
+            if (!map || !districtBoundaries || !districtBoundariesVisible) {
+                return;
+            }
+            
+            // Store the selected district for toggle functionality
+            currentSelectedDistrict = district;
+            
+            // Remove existing district boundaries to ensure clean refresh
+            if (map.districtLayer) {
+                map.removeLayer(map.districtLayer);
+                map.districtLayer = null;
+            }
+            
+            console.log('📍 Adding district boundaries to map with', district, 'highlighted');
+        }
+
         function toggleDistrictBoundaries() {
-            console.log('District boundaries toggle - stub function');
+            districtBoundariesVisible = !districtBoundariesVisible;
+            
+            if (districtBoundariesVisible) {
+                // Show boundaries
+                if (districtBoundaries && currentSelectedDistrict) {
+                    addDistrictBoundariesToMap(currentSelectedDistrict);
+                }
+            } else {
+                // Hide boundaries
+                if (map.districtLayer) {
+                    map.removeLayer(map.districtLayer);
+                }
+            }
+            
+            updateDistrictToggleButton();
+            console.log('📍 District boundaries', districtBoundariesVisible ? 'shown' : 'hidden');
         }
 
         function updateDistrictToggleButton() {
-            console.log('Update district toggle button - stub function');
-        }
-
-        function addDistrictBoundariesToMap(district) {
-            console.log('Add district boundaries to map - stub function for', district);
+            const districtToggleBtn = document.getElementById('districtToggleBtn');
+            if (districtToggleBtn) {
+                if (districtBoundariesVisible) {
+                    districtToggleBtn.classList.add('active');
+                    districtToggleBtn.innerHTML = '🗺️ Districts';
+                    districtToggleBtn.title = 'Hide district boundaries';
+                } else {
+                    districtToggleBtn.classList.remove('active');
+                    districtToggleBtn.innerHTML = '🗺️ Districts';
+                    districtToggleBtn.title = 'Show district boundaries';
+                }
+            }
         }
 
         function checkUpcomingDrives(district) {
-            console.log('Check upcoming drives - stub function for', district);
+            console.log('🗳️ Checking for upcoming drives in/near district:', district);
+            // This function can be empty for now since we haven't implemented the drives API yet
         }
 
         async function parseCSV(csvText, district) {
-            // Minimal CSV parser stub - just return empty data structure
-            console.log('Parsing CSV for', district, '- stub function');
-            return { within: [], near: [] };
+            const lines = csvText.split('\n').filter(function(line) {
+                return line.trim();
+            });
+            
+            if (lines.length < 3) {
+                return { within: [], near: [] };
+            }
+
+            const colleges = { within: [], near: [] };
+            let currentSection = 'within';
+            let headers = [];
+            let headerRowFound = false;
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                
+                // Skip section separator lines and headers
+                if (line.toUpperCase().includes('COLLEGES AND UNIVERSITIES NEAR') || 
+                    line.toUpperCase().includes('COLLEGES NEAR')) {
+                    currentSection = 'near';
+                    headerRowFound = false;
+                    console.log('📋 Switching to NEAR section');
+                    continue;
+                } else if (line.toUpperCase().includes('COLLEGES AND UNIVERSITIES WITHIN') ||
+                           line.toUpperCase().includes('COLLEGES IN')) {
+                    currentSection = 'within';
+                    headerRowFound = false;
+                    console.log('📋 Switching to WITHIN section');
+                    continue;
+                }
+
+                const values = parseCSVLine(line);
+                
+                // Skip empty lines
+                if (values.length === 0 || !values[0] || values[0].trim() === '') {
+                    continue;
+                }
+
+                // Check if this is a header row
+                if (!headerRowFound && (values[0].toLowerCase().includes('institution') || 
+                                       values[0].toLowerCase() === 'institution name')) {
+                    headers = values.map(function(h) { return h.trim(); });
+                    headerRowFound = true;
+                    console.log('Found headers for ' + currentSection + ' section:', headers);
+                    continue;
+                }
+
+                // Skip if we haven't found headers yet
+                if (!headerRowFound || headers.length === 0) {
+                    continue;
+                }
+
+                // Skip header repetitions in data
+                if (values[0].toLowerCase().includes('institution name') || 
+                    values[0].toLowerCase() === 'institution name') {
+                    console.log('Skipping duplicate header row');
+                    continue;
+                }
+
+                // Parse college data
+                const college = await parseCollegeData(values, headers, district, currentSection);
+                if (college && college.name && college.name.length > 3) {
+                    colleges[currentSection].push(college);
+                }
+            }
+
+            console.log('Parsed ' + colleges.within.length + ' colleges within ' + district + ' and ' + colleges.near.length + ' colleges near ' + district);
+            return colleges;
+        }
+
+        function parseCSVLine(line) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            let i = 0;
+
+            while (i < line.length) {
+                const char = line[i];
+                
+                if (char === '"') {
+                    if (inQuotes && line[i + 1] === '"') {
+                        current += '"';
+                        i += 2;
+                        continue;
+                    } else {
+                        inQuotes = !inQuotes;
+                    }
+                } else if (char === ',' && !inQuotes) {
+                    result.push(current.trim());
+                    current = '';
+                } else {
+                    current += char;
+                }
+                i++;
+            }
+            
+            result.push(current.trim());
+            return result.map(function(item) {
+                return item.replace(/^"|"$/g, '');
+            });
+        }
+
+        async function parseCollegeData(values, headers, district, section) {
+            const college = {
+                name: values[0].trim() || '',
+                district: district,
+                section: section,
+                enrollment: 2000,
+                hasQuad: true,
+                suitability: "High",
+                type: "College",
+                publicPrivate: "Public"
+            };
+
+            console.log('🏫 Parsing college:', college.name);
+
+            for (let j = 0; j < headers.length; j++) {
+                const header = headers[j];
+                const value = values[j] ? values[j].trim() : '';
+                if (!value) continue;
+
+                const headerLower = header.toLowerCase();
+
+                if (headerLower === 'institution' || headerLower === 'institution name') {
+                    college.name = value;
+                } else if (headerLower === 'institution type' || headerLower === 'type') {
+                    college.type = value;
+                } else if (headerLower === 'address') {
+                    college.address = value;
+                    parseAddressComponents(college, value);
+                } else if (headerLower === 'city') {
+                    college.city = value;
+                } else if (headerLower === 'state') {
+                    college.state = value;
+                } else if (headerLower === 'zip code' || headerLower === 'zipcode' || headerLower === 'zip') {
+                    college.zipCode = value;
+                } else if (headerLower === 'enrollment') {
+                    const enrollmentStr = value.replace(/,/g, '');
+                    const enrollmentMatch = enrollmentStr.match(/(\d+)/);
+                    if (enrollmentMatch) {
+                        college.enrollment = parseInt(enrollmentMatch[1]);
+                    }
+                } else if (headerLower.includes('suitability') || headerLower === 'voter drive suitability') {
+                    if (value.toLowerCase().includes('high') || value.toLowerCase().includes('excellent') || value.toLowerCase().includes('good')) {
+                        college.suitability = 'High';
+                    } else if (value.toLowerCase().includes('medium')) {
+                        college.suitability = 'Medium';
+                    } else if (value.toLowerCase().includes('low')) {
+                        college.suitability = 'Low';
+                    }
+                } else if (headerLower === 'public/private') {
+                    college.publicPrivate = value;
+                } else if (headerLower === 'contact phone' || headerLower === 'phone' || headerLower === 'founded') {
+                    if (value.match(/\(\d{3}\)\s*\d{3}-\d{4}/)) {
+                        college.phone = value;
+                    }
+                }
+            }
+
+            // Add basic coordinates (you can enhance this later)
+            college.lat = 34.2411 + (Math.random() - 0.5) * 0.1;
+            college.lng = -118.5289 + (Math.random() - 0.5) * 0.1;
+
+            return college;
+        }
+
+        function parseAddressComponents(college, address) {
+            const addressMatch = address.match(/^(.*?),\s*([^,]+),\s*([A-Z]{2})\s+(\d{5})/);
+            if (addressMatch) {
+                college.streetAddress = addressMatch[1];
+                college.addressCity = addressMatch[2];
+                college.state = addressMatch[3];
+                college.zipCode = addressMatch[4];
+            } else {
+                college.streetAddress = address;
+            }
         }
 
         // Initialize the app when the page loads

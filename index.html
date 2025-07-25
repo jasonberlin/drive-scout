@@ -133,7 +133,7 @@
             border-radius: 15px;
             overflow: hidden;
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            margin: 8px 0;
+            margin: 8px 0 8px 0;
         }
 
         #map {
@@ -409,11 +409,10 @@
                 <h1 class="mobile-title" style="margin: 0; flex: 1; text-align: center; font-family: 'American Typewriter', 'Courier New', monospace; font-size: 70px; font-style: normal; font-weight: bold; letter-spacing: 2px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);">Drive Scout</h1>
                 <div class="mobile-emojis" style="font-size: 4.5rem;">🗺️🔍</div>
             </div>
-            <p>Planning a voter drive? <em>Great!</em> <strong>This is how we flip the House in 2026.</strong><br>
-            College campuses in swing districts are THE best places to register the voters we need to win.</p>
+            <p>Want to flip the House blue in '26? Hold a college voter drive in a swing district. <em>Drive Scout shows you where!</em></p>
             
             <!-- PRIMARY ACTION BUTTON -->
-            <div style="background: transparent; padding: 15px 25px 10px 25px; margin: 15px 0 10px 0; text-align: center; border-radius: 15px;">
+            <div style="background: transparent; padding: 0; margin: 8px 0; text-align: center;">
                 <button id="findClosestCampusesBtn" onclick="findClosestCampuses()" style="background: #667eea; color: white; padding: 15px 30px; border: none; border-radius: 10px; font-size: 1.1rem; cursor: pointer; font-weight: bold; transition: all 0.3s ease; outline: none;">
                     📍 Find my closest swing district campuses!
                 </button>
@@ -1468,10 +1467,10 @@
                     const selectedLayer = L.geoJSON(selectedFeatures);
                     const bounds = selectedLayer.getBounds();
                     
-                    // Fit the map to the selected district with some padding
+                    // Fit the map to the selected district with minimal padding for tight fit
                     map.fitBounds(bounds, { 
-                        padding: [30, 30],
-                        maxZoom: 13 // More zoomed in to show district closely
+                        padding: [15, 15],
+                        maxZoom: 14 // Higher zoom for district edges to almost touch map edges
                     });
                     
                     console.log('📍 Map zoomed to fit district', selectedDistrict);

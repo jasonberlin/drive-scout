@@ -1225,10 +1225,13 @@
         }
 
         function createPopupContent(college) {
+            const campusSizeDisplay = college.campusSize ? college.campusSize + ' acres' : 'Size not available';
+            
             return '<div style="max-width: 350px;">' +
                 '<div style="font-weight: bold; margin-bottom: 8px; color: #333; font-size: 1.1rem;">' + college.name + '</div>' +
                 '<div style="margin-bottom: 4px; font-size: 0.9rem;"><strong>Type:</strong> ' + college.type + '</div>' +
                 '<div style="margin-bottom: 4px; font-size: 0.9rem;"><strong>Enrollment:</strong> ' + college.enrollment.toLocaleString() + '</div>' +
+                '<div style="margin-bottom: 4px; font-size: 0.9rem;"><strong>Campus Size:</strong> ' + campusSizeDisplay + '</div>' +
                 '<div style="margin-bottom: 4px; font-size: 0.9rem;"><strong>Suitability:</strong> ' + college.suitability + '</div>' +
                 '<div style="margin-top: 10px;">' +
                     '<a href="https://www.google.com/maps/search/' + encodeURIComponent((college.address || college.name) + ', ' + (college.city || '')) + '" target="_blank" style="color: #667eea; text-decoration: none; font-size: 0.9rem;">🗺️ View on Google Maps</a>' +
@@ -1294,6 +1297,8 @@
                 college.streetAddress + '<br>' + (college.city || college.addressCity || '') + ', ' + (college.state || '') + ' ' + (college.zipCode || '') :
                 (college.address || 'Address not available');
             
+            const campusSizeDisplay = college.campusSize ? college.campusSize + ' acres' : 'Size not available';
+            
             div.innerHTML = '<div class="college-name">' + college.name + '</div>' +
                 '<div class="college-details">' +
                     '<div class="detail-item">' +
@@ -1307,6 +1312,10 @@
                     '<div class="detail-item">' +
                         '<div class="detail-label">Enrollment</div>' +
                         '<div class="detail-value">' + college.enrollment.toLocaleString() + '</div>' +
+                    '</div>' +
+                    '<div class="detail-item">' +
+                        '<div class="detail-label">Campus Size</div>' +
+                        '<div class="detail-value">' + campusSizeDisplay + '</div>' +
                     '</div>' +
                     '<div class="detail-item">' +
                         '<div class="detail-label">Voter Drive Suitability</div>' +

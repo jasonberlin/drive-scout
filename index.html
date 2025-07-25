@@ -1441,6 +1441,29 @@
                 onEachFeature: onEachDistrict
             }).addTo(map);
             
+            // Zoom to fit the selected district if specified
+            if (selectedDistrict) {
+                const selectedFeatures = districtBoundaries.data.features.filter(feature => {
+                    const districtId = getDistrictId(feature);
+                    return districtId === selectedDistrict;
+                });
+                
+                if (selectedFeatures.length > 0) {
+                    const selectedLayer = L.geoJSON(selectedFeatures);
+                    const bounds = selectedLayer.getBounds();
+                    
+                    // Fit the map to the selected district with some padding
+                    map.fitBounds(bounds, { 
+                        padding: [50, 50],
+                        maxZoom: 11 // Don't zoom in too much
+                    });
+                    
+                    console.log('📍 Map zoomed to fit district', selectedDistrict);
+                } else {
+                    console.log('⚠️ Could not find boundaries for district', selectedDistrict);
+                }
+            }
+            
             console.log('📍 District boundaries added to map' + (selectedDistrict ? ' with ' + selectedDistrict + ' highlighted' : ''));
             
             // Update toggle button state

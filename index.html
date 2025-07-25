@@ -137,9 +137,9 @@
         }
 
         #map {
-            height: 375px;
+            height: 280px;
             width: 100%;
-            min-height: 375px;
+            min-height: 280px;
             background: #f8f9fa;
             position: relative;
         }
@@ -415,11 +415,11 @@
             to register the voters we need to win.</p>
             
             <!-- PRIMARY ACTION BUTTON -->
-            <div style="background: transparent; padding: 25px; margin: 30px 0; text-align: center; border-radius: 15px;">
+            <div style="background: transparent; padding: 15px 25px 10px 25px; margin: 15px 0 10px 0; text-align: center; border-radius: 15px;">
                 <button id="findClosestCampusesBtn" onclick="findClosestCampuses()" style="background: #667eea; color: white; padding: 15px 30px; border: none; border-radius: 10px; font-size: 1.1rem; cursor: pointer; font-weight: bold; transition: all 0.3s ease; outline: none;">
                     📍 Find my closest swing district campuses!
                 </button>
-                <div id="closestCampusesResult" style="display: none; margin-top: 20px;"></div>
+                <div id="closestCampusesResult" style="display: none; margin-top: 8px;"></div>
             </div>
         </div>
 
@@ -758,7 +758,7 @@
                         const partyBorderColor = districtInfo.party === 'D' ? '#2196f3' : '#f44336'; // Blue border for Dem, red for Rep
                         
                         resultContainer.innerHTML = `
-                            <div style="background: ${partyBackgroundColor}; padding: 12px 20px; border-radius: 10px; border-left: 5px solid ${partyBorderColor}; margin-top: 15px; margin-bottom: 15px;">
+                            <div style="background: ${partyBackgroundColor}; padding: 12px 20px; border-radius: 10px; border-left: 5px solid ${partyBorderColor}; margin-top: 8px; margin-bottom: 8px;">
                                 <div style="font-weight: bold; font-size: 1.2rem; color: #333; margin-bottom: 8px;">
                                     Your closest swing district: ${closestDistrict}
                                 </div>

@@ -1658,11 +1658,17 @@
                     
                     // Parse college data
                     const college = await parseCollegeData(values, headers, district, currentSection);
-                    if (college && college.name && college.name.length > 3 && college.lat !== null && college.lng !== null) {
-                        colleges[currentSection].push(college);
-                        console.log('✅ Added college:', college.name, 'to', currentSection, 'section', 'coords:', college.lat, college.lng);
+                    console.log('🏫 Parsed college result:', college);
+                    
+                    if (college && college.name && college.name.length > 3) {
+                        if (college.lat !== null && college.lng !== null) {
+                            colleges[currentSection].push(college);
+                            console.log('✅ Added college:', college.name, 'to', currentSection, 'section', 'coords:', college.lat, college.lng);
+                        } else {
+                            console.log('⚠️ Skipped college:', college.name, 'reason: missing coordinates. lat:', college.lat, 'lng:', college.lng);
+                        }
                     } else {
-                        console.log('⚠️ Skipped college:', values[institutionColumnIndex], 'reason: missing name or coordinates');
+                        console.log('⚠️ Skipped college - invalid data:', college);
                     }
                 }
             }
@@ -1737,77 +1743,99 @@
             for (let j = 0; j < headers.length; j++) {
                 const header = headers[j];
                 const value = values[j] ? values[j].trim() : '';
-                if (!value || !header) continue;
+                
+                // Skip completely empty headers, but process even if value is empty for debugging
+                if (!header) continue;
 
                 const headerLower = header.toLowerCase();
                 console.log(`🔍 Processing header "${header}" (${headerLower}) with value "${value}"`);
 
                 if (headerLower.includes('institution')) {
-                    college.name = value;
-                    console.log('📝 Set name:', value);
+                    if (value) {
+                        college.name = value;
+                        console.log('📝 Set name:', value);
+                    }
                 } else if (headerLower.includes('type')) {
-                    college.type = value;
-                    console.log('📝 Set type:', value);
+                    if (value) {
+                        college.type = value;
+                        console.log('📝 Set type:', value);
+                    }
                 } else if (headerLower.includes('address')) {
-                    college.address = value;
-                    parseAddressComponents(college, value);
-                    console.log('📝 Set address:', value);
+                    if (value) {
+                        college.address = value;
+                        parseAddressComponents(college, value);
+                        console.log('📝 Set address:', value);
+                    }
                 } else if (headerLower === 'city') {
-                    college.city = value;
-                    console.log('📝 Set city:', value);
+                    if (value) {
+                        college.city = value;
+                        console.log('📝 Set city:', value);
+                    }
                 } else if (headerLower === 'state') {
-                    college.state = value;
+                    if (value) college.state = value;
                 } else if (headerLower.includes('zip')) {
-                    college.zipCode = value;
+                    if (value) college.zipCode = value;
                 } else if (headerLower.includes('enrollment')) {
-                    // Handle enrollment like "30,000+ students per year"
-                    const enrollmentStr = value.replace(/[,+]/g, '').replace(/\D/g, '');
-                    const enrollmentMatch = enrollmentStr.match(/(\d+)/);
-                    if (enrollmentMatch) {
-                        college.enrollment = parseInt(enrollmentMatch[1]);
-                        console.log('📝 Set enrollment:', college.enrollment);
+                    if (value) {
+                        // Handle enrollment like "30,000+ students per year"
+                        const enrollmentStr = value.replace(/[,+]/g, '').replace(/\D/g, '');
+                        const enrollmentMatch = enrollmentStr.match(/(\d+)/);
+                        if (enrollmentMatch) {
+                            college.enrollment = parseInt(enrollmentMatch[1]);
+                            console.log('📝 Set enrollment:', college.enrollment);
+                        }
                     }
                 } else if (headerLower.includes('suitability')) {
-                    if (value.toLowerCase().includes('excellent') || value.toLowerCase().includes('high')) {
-                        college.suitability = 'High';
-                    } else if (value.toLowerCase().includes('good') || value.toLowerCase().includes('medium')) {
-                        college.suitability = 'Medium';
-                    } else if (value.toLowerCase().includes('low') || value.toLowerCase().includes('poor')) {
-                        college.suitability = 'Low';
+                    if (value) {
+                        if (value.toLowerCase().includes('excellent') || value.toLowerCase().includes('high')) {
+                            college.suitability = 'High';
+                        } else if (value.toLowerCase().includes('good') || value.toLowerCase().includes('medium')) {
+                            college.suitability = 'Medium';
+                        } else if (value.toLowerCase().includes('low') || value.toLowerCase().includes('poor')) {
+                            college.suitability = 'Low';
+                        }
+                        console.log('📝 Set suitability:', college.suitability);
                     }
-                    console.log('📝 Set suitability:', college.suitability);
                 } else if (headerLower.includes('public') || headerLower.includes('private')) {
-                    college.publicPrivate = value;
+                    if (value) college.publicPrivate = value;
                 } else if (headerLower.includes('phone')) {
-                    college.phone = value;
+                    if (value) college.phone = value;
                 } else if (headerLower === 'latitude' || headerLower === 'lat') {
-                    // Parse latitude from CSV
+                    // Parse latitude from CSV - ALWAYS try to process this
                     console.log('🔍 Processing latitude column:', header, 'value:', value);
-                    const latValue = parseFloat(value);
-                    if (!isNaN(latValue) && latValue >= -90 && latValue <= 90) {
-                        college.lat = latValue;
-                        console.log('✅ Set latitude for', college.name, ':', latValue);
+                    if (value) {
+                        const latValue = parseFloat(value);
+                        if (!isNaN(latValue) && latValue >= -90 && latValue <= 90) {
+                            college.lat = latValue;
+                            console.log('✅ Set latitude for', college.name, ':', latValue);
+                        } else {
+                            console.log('⚠️ Invalid latitude value for', college.name, ':', value, 'parsed as:', latValue);
+                        }
                     } else {
-                        console.log('⚠️ Invalid latitude value for', college.name, ':', value, 'parsed as:', latValue);
+                        console.log('⚠️ Empty latitude value for', college.name);
                     }
                 } else if (headerLower === 'longitude' || headerLower === 'lng' || headerLower === 'lon') {
-                    // Parse longitude from CSV
+                    // Parse longitude from CSV - ALWAYS try to process this
                     console.log('🔍 Processing longitude column:', header, 'value:', value);
-                    const lngValue = parseFloat(value);
-                    if (!isNaN(lngValue) && lngValue >= -180 && lngValue <= 180) {
-                        college.lng = lngValue;
-                        console.log('✅ Set longitude for', college.name, ':', lngValue);
+                    if (value) {
+                        const lngValue = parseFloat(value);
+                        if (!isNaN(lngValue) && lngValue >= -180 && lngValue <= 180) {
+                            college.lng = lngValue;
+                            console.log('✅ Set longitude for', college.name, ':', lngValue);
+                        } else {
+                            console.log('⚠️ Invalid longitude value for', college.name, ':', value, 'parsed as:', lngValue);
+                        }
                     } else {
-                        console.log('⚠️ Invalid longitude value for', college.name, ':', value, 'parsed as:', lngValue);
+                        console.log('⚠️ Empty longitude value for', college.name);
                     }
                 } else if (headerLower.includes('website')) {
-                    college.website = value;
+                    if (value) college.website = value;
                 } else if (headerLower.includes('quad')) {
-                    college.hasQuad = value.toLowerCase().includes('yes') || value.toLowerCase().includes('central') || value.length > 10;
+                    if (value) college.hasQuad = value.toLowerCase().includes('yes') || value.toLowerCase().includes('central') || value.length > 10;
                 } else if (headerLower.includes('founded')) {
-                    college.founded = value;
+                    if (value) college.founded = value;
                 } else if (headerLower.includes('notes')) {
-                    college.notes = value;
+                    if (value) college.notes = value;
                 }
             }
 

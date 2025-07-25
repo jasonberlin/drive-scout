@@ -404,10 +404,10 @@
 <body>
     <div class="container">
         <div class="header">
-            <div class="mobile-header" style="display: flex; align-items: center; justify-content: center; gap: 30px; margin-bottom: 10px;">
-                <img src="images/FT6Logo2.png" alt="Field Team 6 Logo" class="mobile-logo" style="width: 110px; height: 110px;">
-                <h1 class="mobile-title" style="margin: 0; flex: 1; text-align: center; font-family: 'American Typewriter', 'Courier New', monospace; font-size: 70px; font-style: normal; font-weight: bold; letter-spacing: 2px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);">Drive Scout</h1>
-                <div class="mobile-emojis" style="font-size: 4.5rem;">🗺️🔍</div>
+            <div class="mobile-header" style="display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 10px; width: 100%;">
+                <img src="images/FT6Logo2.png" alt="Field Team 6 Logo" class="mobile-logo" style="width: 110px; height: 110px; flex-shrink: 0;">
+                <h1 class="mobile-title" style="margin: 0; flex: 1; text-align: center; font-family: 'Impact', 'Arial Black', sans-serif; font-size: clamp(2.5rem, 8vw, 5rem); font-weight: 900; letter-spacing: 8px; text-shadow: 3px 3px 6px rgba(0,0,0,0.4); background: linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; text-transform: uppercase; line-height: 0.9;">Drive Scout</h1>
+                <div class="mobile-emojis" style="font-size: 4.5rem; flex-shrink: 0;">🗺️🔍</div>
             </div>
             <p>Want to flip the House blue in '26? Hold a college voter drive in a swing district. <em>Drive Scout shows you where!</em></p>
             
@@ -423,7 +423,7 @@
         <!-- RESULTS CONTAINER FOR CLOSEST DISTRICTS -->
         <div id="closestDistricts" style="display: none; margin: 8px 0;"></div>
 
-        <div class="map-container" id="mapContainer" style="display: none;">
+        <div class="map-container" id="mapContainer" style="display: none; margin-top: 8px !important;">
             <div id="map">
                 <button class="district-toggle-button" id="districtToggleBtn" title="Toggle district boundaries">🗺️ Districts</button>
                 <button class="location-button" id="locationBtn" title="Find my location">
@@ -1297,7 +1297,8 @@
             div.innerHTML = '<div class="college-name">' + college.name + '</div>' +
                 '<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">' +
                     '<div style="color: #666; font-size: 0.9rem; line-height: 1.3; flex: 1;">' + addressDisplay + '</div>' +
-                    '<div style="margin-left: 20px; flex-shrink: 0;">' +
+                    '<div style="margin-left: 20px; flex-shrink: 0; text-align: right;">' +
+                        '<div style="font-size: 0.8rem; color: #666; font-weight: 600; margin-bottom: 2px;">VOTER DRIVE SUITABILITY:</div>' +
                         '<span class="suitability-badge suitability-' + college.suitability.toLowerCase() + '">' + college.suitability + '</span>' +
                     '</div>' +
                 '</div>' +

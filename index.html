@@ -1570,7 +1570,7 @@
                 return line.trim();
             });
             
-            if (lines.length < 3) {
+            if (lines.length < 2) {
                 return { within: [], near: [] };
             }
 
@@ -1580,17 +1580,17 @@
             let headerRowFound = false;
 
             for (let i = 0; i < lines.length; i++) {
-                const line = lines[i].trim();
+                const line = lines[i].trim().replace(/\r$/, ''); // Remove carriage returns
                 
-                // Skip section separator lines and headers
-                if (line.toUpperCase().includes('COLLEGES AND UNIVERSITIES NEAR') || 
-                    line.toUpperCase().includes('COLLEGES NEAR')) {
+                // Skip section separator lines and detect section changes
+                if (line.toUpperCase().includes('COLLEGES NEAR') && 
+                    line.toUpperCase().includes('DISTRICT')) {
                     currentSection = 'near';
                     headerRowFound = false;
                     console.log('📋 Switching to NEAR section');
                     continue;
-                } else if (line.toUpperCase().includes('COLLEGES AND UNIVERSITIES WITHIN') ||
-                           line.toUpperCase().includes('COLLEGES IN')) {
+                } else if (line.toUpperCase().includes('COLLEGES IN') && 
+                           line.toUpperCase().includes('DISTRICT')) {
                     currentSection = 'within';
                     headerRowFound = false;
                     console.log('📋 Switching to WITHIN section');
@@ -1599,18 +1599,28 @@
 
                 const values = parseCSVLine(line);
                 
-                // Skip empty lines
-                if (values.length === 0 || !values[0] || values[0].trim() === '') {
+                // Skip empty lines or lines with only empty values
+                if (values.length === 0 || values.every(v => !v || v.trim() === '')) {
                     continue;
                 }
 
-                // Check if this is a header row
-                if (!headerRowFound && (values[0].toLowerCase().includes('institution') || 
-                                       values[0].toLowerCase() === 'institution name')) {
-                    headers = values.map(function(h) { return h.trim(); });
-                    headerRowFound = true;
-                    console.log('Found headers for ' + currentSection + ' section:', headers);
-                    continue;
+                // Look for header row - find the one with "Institution" in it
+                if (!headerRowFound) {
+                    // Check all values in the row to find Institution column
+                    let institutionColumnFound = false;
+                    for (let j = 0; j < values.length; j++) {
+                        if (values[j] && values[j].toLowerCase().includes('institution')) {
+                            institutionColumnFound = true;
+                            break;
+                        }
+                    }
+                    
+                    if (institutionColumnFound) {
+                        headers = values.map(function(h) { return h ? h.trim() : ''; });
+                        headerRowFound = true;
+                        console.log('📋 Found headers for ' + currentSection + ' section:', headers);
+                        continue;
+                    }
                 }
 
                 // Skip if we haven't found headers yet
@@ -1618,21 +1628,30 @@
                     continue;
                 }
 
-                // Skip header repetitions in data
-                if (values[0].toLowerCase().includes('institution name') || 
-                    values[0].toLowerCase() === 'institution name') {
-                    console.log('Skipping duplicate header row');
-                    continue;
+                // Look for actual college data - find Institution column and check if it has a real college name
+                let institutionColumnIndex = -1;
+                for (let j = 0; j < headers.length; j++) {
+                    if (headers[j] && headers[j].toLowerCase().includes('institution')) {
+                        institutionColumnIndex = j;
+                        break;
+                    }
                 }
 
-                // Parse college data
-                const college = await parseCollegeData(values, headers, district, currentSection);
-                if (college && college.name && college.name.length > 3) {
-                    colleges[currentSection].push(college);
+                if (institutionColumnIndex >= 0 && values[institutionColumnIndex] && 
+                    values[institutionColumnIndex].trim() && 
+                    values[institutionColumnIndex].length > 3 &&
+                    !values[institutionColumnIndex].toLowerCase().includes('institution')) {
+                    
+                    // Parse college data
+                    const college = await parseCollegeData(values, headers, district, currentSection);
+                    if (college && college.name && college.name.length > 3) {
+                        colleges[currentSection].push(college);
+                        console.log('✅ Added college:', college.name, 'to', currentSection, 'section');
+                    }
                 }
             }
 
-            console.log('Parsed ' + colleges.within.length + ' colleges within ' + district + ' and ' + colleges.near.length + ' colleges near ' + district);
+            console.log('📊 Parsed ' + colleges.within.length + ' colleges within ' + district + ' and ' + colleges.near.length + ' colleges near ' + district);
             return colleges;
         }
 
@@ -1670,7 +1689,7 @@
 
         async function parseCollegeData(values, headers, district, section) {
             const college = {
-                name: values[0].trim() || '',
+                name: '',
                 district: district,
                 section: section,
                 enrollment: 2000,
@@ -1682,48 +1701,60 @@
                 lng: null
             };
 
+            // Find the institution name first
+            let institutionColumnIndex = -1;
+            for (let j = 0; j < headers.length; j++) {
+                if (headers[j] && headers[j].toLowerCase().includes('institution')) {
+                    institutionColumnIndex = j;
+                    break;
+                }
+            }
+
+            if (institutionColumnIndex >= 0 && values[institutionColumnIndex]) {
+                college.name = values[institutionColumnIndex].trim();
+            }
+
             console.log('🏫 Parsing college:', college.name);
 
             for (let j = 0; j < headers.length; j++) {
                 const header = headers[j];
                 const value = values[j] ? values[j].trim() : '';
-                if (!value) continue;
+                if (!value || !header) continue;
 
                 const headerLower = header.toLowerCase();
 
-                if (headerLower === 'institution' || headerLower === 'institution name') {
+                if (headerLower.includes('institution')) {
                     college.name = value;
-                } else if (headerLower === 'institution type' || headerLower === 'type') {
+                } else if (headerLower.includes('type')) {
                     college.type = value;
-                } else if (headerLower === 'address') {
+                } else if (headerLower.includes('address')) {
                     college.address = value;
                     parseAddressComponents(college, value);
                 } else if (headerLower === 'city') {
                     college.city = value;
                 } else if (headerLower === 'state') {
                     college.state = value;
-                } else if (headerLower === 'zip code' || headerLower === 'zipcode' || headerLower === 'zip') {
+                } else if (headerLower.includes('zip')) {
                     college.zipCode = value;
-                } else if (headerLower === 'enrollment') {
-                    const enrollmentStr = value.replace(/,/g, '');
+                } else if (headerLower.includes('enrollment')) {
+                    // Handle enrollment like "30,000+ students per year"
+                    const enrollmentStr = value.replace(/[,+]/g, '').replace(/\D/g, '');
                     const enrollmentMatch = enrollmentStr.match(/(\d+)/);
                     if (enrollmentMatch) {
                         college.enrollment = parseInt(enrollmentMatch[1]);
                     }
-                } else if (headerLower.includes('suitability') || headerLower === 'voter drive suitability') {
-                    if (value.toLowerCase().includes('high') || value.toLowerCase().includes('excellent') || value.toLowerCase().includes('good')) {
+                } else if (headerLower.includes('suitability')) {
+                    if (value.toLowerCase().includes('excellent') || value.toLowerCase().includes('high')) {
                         college.suitability = 'High';
-                    } else if (value.toLowerCase().includes('medium')) {
+                    } else if (value.toLowerCase().includes('good') || value.toLowerCase().includes('medium')) {
                         college.suitability = 'Medium';
-                    } else if (value.toLowerCase().includes('low')) {
+                    } else if (value.toLowerCase().includes('low') || value.toLowerCase().includes('poor')) {
                         college.suitability = 'Low';
                     }
-                } else if (headerLower === 'public/private') {
+                } else if (headerLower.includes('public') || headerLower.includes('private')) {
                     college.publicPrivate = value;
-                } else if (headerLower === 'contact phone' || headerLower === 'phone' || headerLower === 'founded') {
-                    if (value.match(/\(\d{3}\)\s*\d{3}-\d{4}/)) {
-                        college.phone = value;
-                    }
+                } else if (headerLower.includes('phone')) {
+                    college.phone = value;
                 } else if (headerLower === 'latitude' || headerLower === 'lat') {
                     // Parse latitude from CSV
                     const latValue = parseFloat(value);
@@ -1742,20 +1773,36 @@
                     } else {
                         console.log('⚠️ Invalid longitude value for', college.name, ':', value);
                     }
-                } else if (headerLower === 'website') {
+                } else if (headerLower.includes('website')) {
                     college.website = value;
+                } else if (headerLower.includes('quad')) {
+                    college.hasQuad = value.toLowerCase().includes('yes') || value.toLowerCase().includes('central') || value.length > 10;
+                } else if (headerLower.includes('founded')) {
+                    college.founded = value;
+                } else if (headerLower.includes('notes')) {
+                    college.notes = value;
                 }
             }
 
-            // Only use fallback coordinates if no lat/lng was found in CSV
-            if (college.lat === null || college.lng === null) {
-                console.log('⚠️ No valid coordinates found in CSV for', college.name, '- this college will be skipped from map');
-                // Don't add fallback coordinates - let the map function handle missing coordinates
-            } else {
-                console.log('✅ Using CSV coordinates for', college.name, ':', college.lat, college.lng);
+            // Determine if it's public or private based on the type if not explicitly set
+            if (college.type) {
+                if (college.type.toLowerCase().includes('community college') || 
+                    college.type.toLowerCase().includes('state university') ||
+                    college.type.toLowerCase().includes('public')) {
+                    college.publicPrivate = 'Public';
+                } else if (college.type.toLowerCase().includes('private')) {
+                    college.publicPrivate = 'Private';
+                }
             }
 
-            return college;
+            // Only return college if we have valid coordinates
+            if (college.lat !== null && college.lng !== null) {
+                console.log('✅ Successfully parsed college with coordinates:', college.name, college.lat, college.lng);
+                return college;
+            } else {
+                console.log('⚠️ Skipping college without valid coordinates:', college.name);
+                return null;
+            }
         }
 
         function parseAddressComponents(college, address) {

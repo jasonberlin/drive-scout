@@ -1704,6 +1704,7 @@
                 district: district,
                 section: section,
                 enrollment: 2000,
+                campusSize: null,
                 hasQuad: true,
                 suitability: "Medium",
                 type: "College",
@@ -1768,6 +1769,12 @@
                         college.enrollment = enrollmentValue;
                         console.log('📝 Set enrollment:', enrollmentValue);
                     }
+                } else if (headerLower === 'campus size') {
+                    const campusSizeValue = parseFloat(value);
+                    if (!isNaN(campusSizeValue)) {
+                        college.campusSize = campusSizeValue;
+                        console.log('📝 Set campus size:', campusSizeValue, 'acres');
+                    }
                 } else if (headerLower === 'suitability') {
                     college.suitability = value; // High, Medium, Low
                     console.log('📝 Set suitability:', value);
@@ -1784,6 +1791,8 @@
                 name: college.name,
                 lat: college.lat,
                 lng: college.lng,
+                enrollment: college.enrollment,
+                campusSize: college.campusSize,
                 section: college.section,
                 suitability: college.suitability
             });

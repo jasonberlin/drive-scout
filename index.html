@@ -1589,91 +1589,80 @@
             }
 
             const colleges = { within: [], near: [] };
-            let currentSection = 'within';
             let headers = [];
             let headerRowFound = false;
 
+            console.log('📋 Starting to parse CSV for district:', district);
+
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i].trim().replace(/\r$/, ''); // Remove carriage returns
-                
-                // Skip section separator lines and detect section changes
-                if (line.toUpperCase().includes('COLLEGES NEAR') && 
-                    line.toUpperCase().includes('DISTRICT')) {
-                    currentSection = 'near';
-                    headerRowFound = false;
-                    console.log('📋 Switching to NEAR section');
-                    continue;
-                } else if (line.toUpperCase().includes('COLLEGES IN') && 
-                           line.toUpperCase().includes('DISTRICT')) {
-                    currentSection = 'within';
-                    headerRowFound = false;
-                    console.log('📋 Switching to WITHIN section');
-                    continue;
-                }
-
                 const values = parseCSVLine(line);
                 
-                // Skip empty lines or lines with only empty values
+                // Skip empty lines
                 if (values.length === 0 || values.every(v => !v || v.trim() === '')) {
                     continue;
                 }
 
-                // Look for header row - find the one with "Institution" in it
+                // First non-empty line should be headers
                 if (!headerRowFound) {
-                    // Check all values in the row to find Institution column
-                    let institutionColumnFound = false;
-                    for (let j = 0; j < values.length; j++) {
-                        if (values[j] && values[j].toLowerCase().includes('institution')) {
-                            institutionColumnFound = true;
-                            break;
-                        }
-                    }
-                    
-                    if (institutionColumnFound) {
-                        headers = values.map(function(h) { return h ? h.trim() : ''; });
-                        headerRowFound = true;
-                        console.log('📋 Found headers for ' + currentSection + ' section:', headers);
-                        continue;
-                    }
-                }
-
-                // Skip if we haven't found headers yet
-                if (!headerRowFound || headers.length === 0) {
+                    headers = values.map(function(h) { return h ? h.trim() : ''; });
+                    headerRowFound = true;
+                    console.log('📋 Found headers:', headers);
                     continue;
                 }
 
-                // Look for actual college data - find Institution column and check if it has a real college name
+                // Find the section and institution columns
+                let sectionColumnIndex = -1;
                 let institutionColumnIndex = -1;
+                
                 for (let j = 0; j < headers.length; j++) {
-                    if (headers[j] && headers[j].toLowerCase().includes('institution')) {
+                    const header = headers[j].toLowerCase();
+                    if (header === 'section') {
+                        sectionColumnIndex = j;
+                    }
+                    if (header === 'institution' || header.includes('institution')) {
                         institutionColumnIndex = j;
-                        break;
                     }
                 }
 
-                if (institutionColumnIndex >= 0 && values[institutionColumnIndex] && 
-                    values[institutionColumnIndex].trim() && 
-                    values[institutionColumnIndex].length > 3 &&
-                    !values[institutionColumnIndex].toLowerCase().includes('institution')) {
-                    
-                    // Parse college data
-                    const college = await parseCollegeData(values, headers, district, currentSection);
-                    console.log('🏫 Parsed college result:', college);
-                    
-                    if (college && college.name && college.name.length > 3) {
-                        if (college.lat !== null && college.lng !== null) {
-                            colleges[currentSection].push(college);
-                            console.log('✅ Added college:', college.name, 'to', currentSection, 'section', 'coords:', college.lat, college.lng);
-                        } else {
-                            console.log('⚠️ Skipped college:', college.name, 'reason: missing coordinates. lat:', college.lat, 'lng:', college.lng);
-                        }
-                    } else {
-                        console.log('⚠️ Skipped college - invalid data:', college);
-                    }
+                // Skip if we don't have required columns
+                if (sectionColumnIndex === -1 || institutionColumnIndex === -1) {
+                    console.log('⚠️ Missing required columns (Section or Institution)');
+                    continue;
+                }
+
+                // Get section and institution name
+                const section = values[sectionColumnIndex] ? values[sectionColumnIndex].trim().toLowerCase() : '';
+                const institutionName = values[institutionColumnIndex] ? values[institutionColumnIndex].trim() : '';
+
+                // Skip rows without valid institution names
+                if (!institutionName || institutionName.length < 3) {
+                    console.log('⚠️ Skipping row with invalid institution name:', institutionName);
+                    continue;
+                }
+
+                // Determine which section this belongs to
+                let targetSection = 'within'; // default
+                if (section === 'near' || section.includes('near')) {
+                    targetSection = 'near';
+                } else if (section === 'within' || section.includes('within')) {
+                    targetSection = 'within';
+                }
+
+                console.log('🏫 Processing college:', institutionName, 'in section:', targetSection);
+
+                // Parse college data
+                const college = await parseCollegeData(values, headers, district, targetSection);
+                
+                if (college && college.name && college.lat !== null && college.lng !== null) {
+                    colleges[targetSection].push(college);
+                    console.log('✅ Added college:', college.name, 'to', targetSection, 'section', 'coords:', college.lat, college.lng);
+                } else {
+                    console.log('⚠️ Skipped college:', institutionName, 'reason: missing data or coordinates');
                 }
             }
 
-            console.log('📊 Parsed ' + colleges.within.length + ' colleges within ' + district + ' and ' + colleges.near.length + ' colleges near ' + district);
+            console.log('📊 Parsed', colleges.within.length, 'colleges within', district, 'and', colleges.near.length, 'colleges near', district);
             return colleges;
         }
 
@@ -1716,148 +1705,89 @@
                 section: section,
                 enrollment: 2000,
                 hasQuad: true,
-                suitability: "High",
+                suitability: "Medium",
                 type: "College",
                 publicPrivate: "Public",
                 lat: null,
                 lng: null
             };
 
-            // Find the institution name first
-            let institutionColumnIndex = -1;
+            console.log('🏫 Parsing college with headers:', headers);
+            console.log('🏫 Values:', values);
+
+            // Process each column based on header name
             for (let j = 0; j < headers.length; j++) {
-                if (headers[j] && headers[j].toLowerCase().includes('institution')) {
-                    institutionColumnIndex = j;
-                    break;
-                }
-            }
-
-            if (institutionColumnIndex >= 0 && values[institutionColumnIndex]) {
-                college.name = values[institutionColumnIndex].trim();
-            }
-
-            console.log('🏫 Parsing college:', college.name);
-            console.log('📋 Available headers:', headers);
-            console.log('📋 Row values:', values);
-
-            for (let j = 0; j < headers.length; j++) {
-                const header = headers[j];
+                const header = headers[j] ? headers[j].trim() : '';
                 const value = values[j] ? values[j].trim() : '';
                 
-                // Skip completely empty headers, but process even if value is empty for debugging
                 if (!header) continue;
 
                 const headerLower = header.toLowerCase();
-                console.log(`🔍 Processing header "${header}" (${headerLower}) with value "${value}"`);
-
-                if (headerLower.includes('institution')) {
-                    if (value) {
-                        college.name = value;
-                        console.log('📝 Set name:', value);
+                
+                if (headerLower === 'institution') {
+                    college.name = value;
+                    console.log('📝 Set name:', value);
+                } else if (headerLower === 'type') {
+                    college.type = value;
+                    // Determine public/private from type
+                    if (value.toLowerCase().includes('community') || value.toLowerCase().includes('public')) {
+                        college.publicPrivate = 'Public';
+                    } else if (value.toLowerCase().includes('private')) {
+                        college.publicPrivate = 'Private';
                     }
-                } else if (headerLower.includes('type')) {
-                    if (value) {
-                        college.type = value;
-                        console.log('📝 Set type:', value);
-                    }
-                } else if (headerLower.includes('address')) {
-                    if (value) {
-                        college.address = value;
-                        parseAddressComponents(college, value);
-                        console.log('📝 Set address:', value);
-                    }
+                    console.log('📝 Set type:', value, 'public/private:', college.publicPrivate);
+                } else if (headerLower === 'address') {
+                    college.address = value;
+                    parseAddressComponents(college, value);
+                    console.log('📝 Set address:', value);
                 } else if (headerLower === 'city') {
-                    if (value) {
-                        college.city = value;
-                        console.log('📝 Set city:', value);
-                    }
+                    college.city = value;
                 } else if (headerLower === 'state') {
-                    if (value) college.state = value;
-                } else if (headerLower.includes('zip')) {
-                    if (value) college.zipCode = value;
-                } else if (headerLower.includes('enrollment')) {
-                    if (value) {
-                        // Handle enrollment like "30,000+ students per year"
-                        const enrollmentStr = value.replace(/[,+]/g, '').replace(/\D/g, '');
-                        const enrollmentMatch = enrollmentStr.match(/(\d+)/);
-                        if (enrollmentMatch) {
-                            college.enrollment = parseInt(enrollmentMatch[1]);
-                            console.log('📝 Set enrollment:', college.enrollment);
-                        }
-                    }
-                } else if (headerLower.includes('suitability')) {
-                    if (value) {
-                        if (value.toLowerCase().includes('excellent') || value.toLowerCase().includes('high')) {
-                            college.suitability = 'High';
-                        } else if (value.toLowerCase().includes('good') || value.toLowerCase().includes('medium')) {
-                            college.suitability = 'Medium';
-                        } else if (value.toLowerCase().includes('low') || value.toLowerCase().includes('poor')) {
-                            college.suitability = 'Low';
-                        }
-                        console.log('📝 Set suitability:', college.suitability);
-                    }
-                } else if (headerLower.includes('public') || headerLower.includes('private')) {
-                    if (value) college.publicPrivate = value;
-                } else if (headerLower.includes('phone')) {
-                    if (value) college.phone = value;
-                } else if (headerLower === 'latitude' || headerLower === 'lat') {
-                    // Parse latitude from CSV - ALWAYS try to process this
-                    console.log('🔍 Processing latitude column:', header, 'value:', value);
-                    if (value) {
-                        const latValue = parseFloat(value);
-                        if (!isNaN(latValue) && latValue >= -90 && latValue <= 90) {
-                            college.lat = latValue;
-                            console.log('✅ Set latitude for', college.name, ':', latValue);
-                        } else {
-                            console.log('⚠️ Invalid latitude value for', college.name, ':', value, 'parsed as:', latValue);
-                        }
+                    college.state = value;
+                } else if (headerLower === 'zip') {
+                    college.zipCode = value;
+                } else if (headerLower === 'latitude') {
+                    const latValue = parseFloat(value);
+                    if (!isNaN(latValue) && latValue >= -90 && latValue <= 90) {
+                        college.lat = latValue;
+                        console.log('✅ Set latitude:', latValue);
                     } else {
-                        console.log('⚠️ Empty latitude value for', college.name);
+                        console.log('⚠️ Invalid latitude:', value);
                     }
-                } else if (headerLower === 'longitude' || headerLower === 'lng' || headerLower === 'lon') {
-                    // Parse longitude from CSV - ALWAYS try to process this
-                    console.log('🔍 Processing longitude column:', header, 'value:', value);
-                    if (value) {
-                        const lngValue = parseFloat(value);
-                        if (!isNaN(lngValue) && lngValue >= -180 && lngValue <= 180) {
-                            college.lng = lngValue;
-                            console.log('✅ Set longitude for', college.name, ':', lngValue);
-                        } else {
-                            console.log('⚠️ Invalid longitude value for', college.name, ':', value, 'parsed as:', lngValue);
-                        }
+                } else if (headerLower === 'longitude') {
+                    const lngValue = parseFloat(value);
+                    if (!isNaN(lngValue) && lngValue >= -180 && lngValue <= 180) {
+                        college.lng = lngValue;
+                        console.log('✅ Set longitude:', lngValue);
                     } else {
-                        console.log('⚠️ Empty longitude value for', college.name);
+                        console.log('⚠️ Invalid longitude:', value);
                     }
-                } else if (headerLower.includes('website')) {
-                    if (value) college.website = value;
-                } else if (headerLower.includes('quad')) {
-                    if (value) college.hasQuad = value.toLowerCase().includes('yes') || value.toLowerCase().includes('central') || value.length > 10;
-                } else if (headerLower.includes('founded')) {
-                    if (value) college.founded = value;
-                } else if (headerLower.includes('notes')) {
-                    if (value) college.notes = value;
+                } else if (headerLower === 'enrollment') {
+                    const enrollmentValue = parseInt(value);
+                    if (!isNaN(enrollmentValue)) {
+                        college.enrollment = enrollmentValue;
+                        console.log('📝 Set enrollment:', enrollmentValue);
+                    }
+                } else if (headerLower === 'suitability') {
+                    college.suitability = value; // High, Medium, Low
+                    console.log('📝 Set suitability:', value);
+                } else if (headerLower === 'phone') {
+                    college.phone = value;
+                } else if (headerLower === 'website') {
+                    college.website = value;
+                } else if (headerLower === 'notes') {
+                    college.notes = value;
                 }
             }
 
-            // Determine if it's public or private based on the type if not explicitly set
-            if (college.type) {
-                if (college.type.toLowerCase().includes('community college') || 
-                    college.type.toLowerCase().includes('state university') ||
-                    college.type.toLowerCase().includes('public')) {
-                    college.publicPrivate = 'Public';
-                } else if (college.type.toLowerCase().includes('private')) {
-                    college.publicPrivate = 'Private';
-                }
-            }
-
-            // Always return the college object for debugging
-            console.log('📊 Final college data:', {
+            console.log('📊 Final college:', {
                 name: college.name,
                 lat: college.lat,
                 lng: college.lng,
-                hasValidCoords: (college.lat !== null && college.lng !== null)
+                section: college.section,
+                suitability: college.suitability
             });
-            
+
             return college;
         }
 

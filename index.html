@@ -1731,6 +1731,8 @@
             }
 
             console.log('🏫 Parsing college:', college.name);
+            console.log('📋 Available headers:', headers);
+            console.log('📋 Row values:', values);
 
             for (let j = 0; j < headers.length; j++) {
                 const header = headers[j];
@@ -1738,16 +1740,21 @@
                 if (!value || !header) continue;
 
                 const headerLower = header.toLowerCase();
+                console.log(`🔍 Processing header "${header}" (${headerLower}) with value "${value}"`);
 
                 if (headerLower.includes('institution')) {
                     college.name = value;
+                    console.log('📝 Set name:', value);
                 } else if (headerLower.includes('type')) {
                     college.type = value;
+                    console.log('📝 Set type:', value);
                 } else if (headerLower.includes('address')) {
                     college.address = value;
                     parseAddressComponents(college, value);
+                    console.log('📝 Set address:', value);
                 } else if (headerLower === 'city') {
                     college.city = value;
+                    console.log('📝 Set city:', value);
                 } else if (headerLower === 'state') {
                     college.state = value;
                 } else if (headerLower.includes('zip')) {
@@ -1758,6 +1765,7 @@
                     const enrollmentMatch = enrollmentStr.match(/(\d+)/);
                     if (enrollmentMatch) {
                         college.enrollment = parseInt(enrollmentMatch[1]);
+                        console.log('📝 Set enrollment:', college.enrollment);
                     }
                 } else if (headerLower.includes('suitability')) {
                     if (value.toLowerCase().includes('excellent') || value.toLowerCase().includes('high')) {
@@ -1767,27 +1775,30 @@
                     } else if (value.toLowerCase().includes('low') || value.toLowerCase().includes('poor')) {
                         college.suitability = 'Low';
                     }
+                    console.log('📝 Set suitability:', college.suitability);
                 } else if (headerLower.includes('public') || headerLower.includes('private')) {
                     college.publicPrivate = value;
                 } else if (headerLower.includes('phone')) {
                     college.phone = value;
                 } else if (headerLower === 'latitude' || headerLower === 'lat') {
                     // Parse latitude from CSV
+                    console.log('🔍 Processing latitude column:', header, 'value:', value);
                     const latValue = parseFloat(value);
                     if (!isNaN(latValue) && latValue >= -90 && latValue <= 90) {
                         college.lat = latValue;
                         console.log('✅ Set latitude for', college.name, ':', latValue);
                     } else {
-                        console.log('⚠️ Invalid latitude value for', college.name, ':', value);
+                        console.log('⚠️ Invalid latitude value for', college.name, ':', value, 'parsed as:', latValue);
                     }
                 } else if (headerLower === 'longitude' || headerLower === 'lng' || headerLower === 'lon') {
                     // Parse longitude from CSV
+                    console.log('🔍 Processing longitude column:', header, 'value:', value);
                     const lngValue = parseFloat(value);
                     if (!isNaN(lngValue) && lngValue >= -180 && lngValue <= 180) {
                         college.lng = lngValue;
                         console.log('✅ Set longitude for', college.name, ':', lngValue);
                     } else {
-                        console.log('⚠️ Invalid longitude value for', college.name, ':', value);
+                        console.log('⚠️ Invalid longitude value for', college.name, ':', value, 'parsed as:', lngValue);
                     }
                 } else if (headerLower.includes('website')) {
                     college.website = value;

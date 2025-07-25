@@ -898,22 +898,36 @@
             
             const collegeDataForDistrict = collegeData[state] && collegeData[state][district] ? collegeData[state][district] : [];
             
+            console.log('📊 College data for district:', district, collegeDataForDistrict);
+            
             let allColleges = [];
             let withinColleges = [];
             let nearColleges = [];
 
+            // Handle both array format and object format with within/near sections
             if (Array.isArray(collegeDataForDistrict)) {
                 allColleges = collegeDataForDistrict;
                 withinColleges = collegeDataForDistrict;
-            } else if (collegeDataForDistrict.within || collegeDataForDistrict.near) {
+                console.log('📊 Using array format, found', allColleges.length, 'colleges');
+            } else if (collegeDataForDistrict && typeof collegeDataForDistrict === 'object') {
                 withinColleges = collegeDataForDistrict.within || [];
                 nearColleges = collegeDataForDistrict.near || [];
                 allColleges = withinColleges.concat(nearColleges);
+                console.log('📊 Using object format: within=', withinColleges.length, 'near=', nearColleges.length, 'total=', allColleges.length);
             }
             
+            // Filter out any null/invalid colleges
+            allColleges = allColleges.filter(college => college && college.name && college.lat && college.lng);
+            withinColleges = withinColleges.filter(college => college && college.name && college.lat && college.lng);
+            nearColleges = nearColleges.filter(college => college && college.name && college.lat && college.lng);
+            
+            console.log('📊 After filtering: total=', allColleges.length, 'within=', withinColleges.length, 'near=', nearColleges.length);
+            
             if (allColleges.length === 0) {
+                console.log('⚠️ No valid colleges found, showing no data message');
                 showNoData(state, district);
             } else {
+                console.log('✅ Found valid colleges, displaying map and list');
                 updateStats(allColleges);
                 
                 document.getElementById('stats').style.display = 'grid';
@@ -1644,9 +1658,11 @@
                     
                     // Parse college data
                     const college = await parseCollegeData(values, headers, district, currentSection);
-                    if (college && college.name && college.name.length > 3) {
+                    if (college && college.name && college.name.length > 3 && college.lat !== null && college.lng !== null) {
                         colleges[currentSection].push(college);
-                        console.log('✅ Added college:', college.name, 'to', currentSection, 'section');
+                        console.log('✅ Added college:', college.name, 'to', currentSection, 'section', 'coords:', college.lat, college.lng);
+                    } else {
+                        console.log('⚠️ Skipped college:', values[institutionColumnIndex], 'reason: missing name or coordinates');
                     }
                 }
             }
@@ -1795,14 +1811,15 @@
                 }
             }
 
-            // Only return college if we have valid coordinates
-            if (college.lat !== null && college.lng !== null) {
-                console.log('✅ Successfully parsed college with coordinates:', college.name, college.lat, college.lng);
-                return college;
-            } else {
-                console.log('⚠️ Skipping college without valid coordinates:', college.name);
-                return null;
-            }
+            // Always return the college object for debugging
+            console.log('📊 Final college data:', {
+                name: college.name,
+                lat: college.lat,
+                lng: college.lng,
+                hasValidCoords: (college.lat !== null && college.lng !== null)
+            });
+            
+            return college;
         }
 
         function parseAddressComponents(college, address) {

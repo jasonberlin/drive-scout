@@ -1159,13 +1159,22 @@
 
             colleges.forEach(function(college) {
                 if (!college.lat || !college.lng) {
-                    console.log('Skipping college without coordinates:', college.name);
+                    console.log('⚠️ Skipping college without valid coordinates:', college.name, 'lat:', college.lat, 'lng:', college.lng);
+                    return;
+                }
+
+                // Validate coordinates are numbers
+                const lat = parseFloat(college.lat);
+                const lng = parseFloat(college.lng);
+                
+                if (isNaN(lat) || isNaN(lng)) {
+                    console.log('⚠️ Skipping college with invalid coordinates:', college.name, 'lat:', college.lat, 'lng:', college.lng);
                     return;
                 }
 
                 const iconColor = getSuitabilityColor(college.suitability);
                 
-                const marker = L.marker([college.lat, college.lng], {
+                const marker = L.marker([lat, lng], {
                     icon: L.divIcon({
                         className: 'custom-marker',
                         html: '<div style="background-color: ' + iconColor + '; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 3px 6px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 12px;">📍</div>',
@@ -1180,10 +1189,15 @@
                 marker.addTo(map);
                 group.addLayer(marker);
                 markers.push(marker);
+                
+                console.log('✅ Added marker for:', college.name, 'at', lat, lng);
             });
 
             if (group.getLayers().length > 0) {
                 map.fitBounds(group.getBounds(), { padding: [50, 50] });
+                console.log('🗺️ Map fitted to', group.getLayers().length, 'college markers');
+            } else {
+                console.log('⚠️ No valid markers were added to the map');
             }
         }
 
@@ -1663,7 +1677,9 @@
                 hasQuad: true,
                 suitability: "High",
                 type: "College",
-                publicPrivate: "Public"
+                publicPrivate: "Public",
+                lat: null,
+                lng: null
             };
 
             console.log('🏫 Parsing college:', college.name);
@@ -1708,12 +1724,36 @@
                     if (value.match(/\(\d{3}\)\s*\d{3}-\d{4}/)) {
                         college.phone = value;
                     }
+                } else if (headerLower === 'latitude' || headerLower === 'lat') {
+                    // Parse latitude from CSV
+                    const latValue = parseFloat(value);
+                    if (!isNaN(latValue) && latValue >= -90 && latValue <= 90) {
+                        college.lat = latValue;
+                        console.log('✅ Set latitude for', college.name, ':', latValue);
+                    } else {
+                        console.log('⚠️ Invalid latitude value for', college.name, ':', value);
+                    }
+                } else if (headerLower === 'longitude' || headerLower === 'lng' || headerLower === 'lon') {
+                    // Parse longitude from CSV
+                    const lngValue = parseFloat(value);
+                    if (!isNaN(lngValue) && lngValue >= -180 && lngValue <= 180) {
+                        college.lng = lngValue;
+                        console.log('✅ Set longitude for', college.name, ':', lngValue);
+                    } else {
+                        console.log('⚠️ Invalid longitude value for', college.name, ':', value);
+                    }
+                } else if (headerLower === 'website') {
+                    college.website = value;
                 }
             }
 
-            // Add basic coordinates (you can enhance this later)
-            college.lat = 34.2411 + (Math.random() - 0.5) * 0.1;
-            college.lng = -118.5289 + (Math.random() - 0.5) * 0.1;
+            // Only use fallback coordinates if no lat/lng was found in CSV
+            if (college.lat === null || college.lng === null) {
+                console.log('⚠️ No valid coordinates found in CSV for', college.name, '- this college will be skipped from map');
+                // Don't add fallback coordinates - let the map function handle missing coordinates
+            } else {
+                console.log('✅ Using CSV coordinates for', college.name, ':', college.lat, college.lng);
+            }
 
             return college;
         }

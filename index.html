@@ -1494,31 +1494,28 @@
                 const districtInfo = districtData[districtId];
                 const isSelected = selectedDistrict && districtId === selectedDistrict;
                 
-                let popupContent = '<div style="font-weight: bold; margin-bottom: 8px; font-size: 1.1rem;">' + districtId;
+                let popupContent = '<div style="max-width: 200px; text-align: center; padding: 0; margin: 0;">';
+                
+                // District ID with selected indicator
+                popupContent += '<div style="font-weight: bold; margin-bottom: 2px; color: #333; font-size: 0.9rem; line-height: 1.0;">';
+                popupContent += districtId;
                 if (isSelected) {
-                    popupContent += ' <span style="background: #4CAF50; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem;">SELECTED</span>';
+                    popupContent += ' • <span style="background: #4CAF50; color: white; padding: 1px 6px; border-radius: 8px; font-size: 0.75rem;">SELECTED</span>';
                 }
                 popupContent += '</div>';
                 
                 if (districtInfo) {
-                    const partyColor = districtInfo.party === 'D' ? '#4169E1' : '#DC143C';
-                    const actionColor = districtInfo.action === 'FLIP' ? '#DC143C' : '#4CAF50';
-                    
-                    popupContent += '<div style="margin-bottom: 4px;"><strong>Representative:</strong> ' + districtInfo.rep + '</div>';
-                    popupContent += '<div style="margin-bottom: 8px;">';
-                    popupContent += '<span style="background: ' + partyColor + '; color: white; padding: 3px 8px; border-radius: 15px; font-size: 0.8rem; margin-right: 5px;">' + districtInfo.party + '</span>';
-                    popupContent += '<span style="background: ' + actionColor + '; color: white; padding: 4px 10px; border-radius: 15px; font-size: 0.9rem;">' + districtInfo.action + '</span>';
+                    // Rep name, party, and action
+                    popupContent += '<div style="font-size: 0.8rem; color: #666; margin: 0; line-height: 1.1;">';
+                    popupContent += 'Rep. ' + districtInfo.rep + ' (' + districtInfo.party + ') • ' + districtInfo.action;
                     popupContent += '</div>';
-                    popupContent += '<div><strong>Cook PVI:</strong> ' + districtInfo.pvi + '</div>';
-                    
-                    if (districtInfo.cities) {
-                        popupContent += '<div style="margin-top: 8px;"><strong>Major Cities:</strong><br>' + districtInfo.cities.slice(0, 3).join(', ') + '</div>';
-                    }
                 } else {
-                    popupContent += '<div style="color: #666;">Not a swing district</div>';
+                    popupContent += '<div style="font-size: 0.8rem; color: #666;">Not a swing district</div>';
                 }
                 
-                layer.bindPopup(popupContent, { maxWidth: 300 });
+                popupContent += '</div>';
+                
+                layer.bindPopup(popupContent, { maxWidth: 220 });
                 
                 // Add hover effects
                 layer.on({

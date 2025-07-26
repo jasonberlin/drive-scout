@@ -411,6 +411,17 @@
             }
         }
 
+        /* Custom popup styling to remove default Leaflet padding */
+        .leaflet-popup-content-wrapper {
+            padding: 2px 4px !important;
+        }
+        
+        .leaflet-popup-content {
+            margin: 0 !important;
+            padding: 0 !important;
+            line-height: 1 !important;
+        }
+
         .no-data {
             text-align: center;
             padding: 40px;
@@ -1277,7 +1288,7 @@
         }
 
         function createPopupContent(college) {
-            return '<div style="max-width: 90px; text-align: center; padding: 1px 3px; margin: 0;">' +
+            return '<div style="max-width: 90px; text-align: center; padding: 0; margin: 0;">' +
                 '<div style="font-weight: bold; margin-bottom: 0px; color: #333; font-size: 0.8rem; line-height: 0.9;">' + college.name + '</div>' +
                 '<div style="font-size: 0.7rem; color: #666; margin: 0; line-height: 0.9;">Rating: <strong>' + college.suitability + '</strong></div>' +
                 '</div>';

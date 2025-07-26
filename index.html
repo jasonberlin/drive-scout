@@ -1395,18 +1395,11 @@
             const state = district.split('-')[0] || 'XX'; // Extract state from district (e.g., "CA" from "CA-27")
             const districtCode = district.replace('-', ''); // Convert "CA-27" to "CA27"
             
-            const mobilizeTitle = encodeURIComponent(district + ' - ' + collegeName + ' - Register Democrats to save the world!');
-            const mobilizeTags = encodeURIComponent('Drive,CA,' + districtCode);
+            const eventDescription = encodeURIComponent('College voter registration drive in swing district ' + district + ' at ' + collegeName + '. Help us register Democrats to save the world!');
             
-            // Try multiple parameter variations that Mobilize might recognize
+            // Try the documented URL parameters for event creation
             const mobilizeURL = 'https://www.mobilize.us/dashboard/ft6/event-campaign/699/?' + 
-                'default_title=' + mobilizeTitle + 
-                '&title=' + mobilizeTitle +
-                '&event_title=' + mobilizeTitle +
-                '&name=' + mobilizeTitle +
-                '&tags=' + mobilizeTags +
-                '&default_tags=' + mobilizeTags +
-                '&tag_options=' + mobilizeTags;
+                'event_description=' + eventDescription;
             
             div.innerHTML = '<div class="college-name">' + college.name + '</div>' +
                 '<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">' +

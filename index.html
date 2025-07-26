@@ -220,13 +220,13 @@
             background: transparent;
             border-radius: 15px;
             padding: 0 0 25px 0 !important;
-            margin: -3px 0 0 0 !important;
+            margin: -2px 0 0 0 !important;
             box-shadow: none;
         }
 
         /* FORCE override any spacing on college list */
         #collegeList {
-            margin: -3px 0 0 0 !important;
+            margin: -2px 0 0 0 !important;
             padding: 0 0 25px 0 !important;
         }
 
@@ -744,6 +744,9 @@
                 function(position) {
                     const userLat = position.coords.latitude;
                     const userLng = position.coords.longitude;
+                    
+                    // Store user location globally for distance calculations
+                    window.lastUserLocation = { lat: userLat, lng: userLng };
                     
                     console.log('✅ User location for campus search:', userLat, userLng);
                     
@@ -1276,15 +1279,24 @@
             const container = document.getElementById('collegeItems');
             container.innerHTML = '';
 
+            // Get user location from the "Find closest campuses" functionality
+            let userLat = null;
+            let userLng = null;
+            
+            // Check if we have user location from the geolocation
+            if (window.lastUserLocation) {
+                userLat = window.lastUserLocation.lat;
+                userLng = window.lastUserLocation.lng;
+            }
+
             // Sort colleges by distance if user location is available
             function sortCollegesByDistance(colleges) {
-                if (!userLocationMarker) return colleges;
+                if (!userLat || !userLng) return colleges;
                 
-                const userLatLng = userLocationMarker.getLatLng();
                 return colleges.slice().sort((a, b) => {
                     if (!a.lat || !a.lng || !b.lat || !b.lng) return 0;
-                    const distanceA = calculateDistance(userLatLng.lat, userLatLng.lng, a.lat, a.lng);
-                    const distanceB = calculateDistance(userLatLng.lat, userLatLng.lng, b.lat, b.lng);
+                    const distanceA = calculateDistance(userLat, userLng, a.lat, a.lng);
+                    const distanceB = calculateDistance(userLat, userLng, b.lat, b.lng);
                     return distanceA - distanceB;
                 });
             }
@@ -1296,7 +1308,7 @@
 
                 const sortedWithinColleges = sortCollegesByDistance(withinColleges);
                 sortedWithinColleges.forEach(function(college) {
-                    const collegeElement = createCollegeElement(college);
+                    const collegeElement = createCollegeElement(college, false, userLat, userLng);
                     container.appendChild(collegeElement);
                 });
             }
@@ -1308,13 +1320,13 @@
 
                 const sortedNearColleges = sortCollegesByDistance(nearColleges);
                 sortedNearColleges.forEach(function(college) {
-                    const collegeElement = createCollegeElement(college, true);
+                    const collegeElement = createCollegeElement(college, true, userLat, userLng);
                     container.appendChild(collegeElement);
                 });
             }
         }
 
-        function createCollegeElement(college, showDistance) {
+        function createCollegeElement(college, showDistance, userLat, userLng) {
             const div = document.createElement('div');
             div.className = 'college-item';
             
@@ -1324,9 +1336,8 @@
             
             // Calculate distance if user location is available
             let distanceText = '';
-            if (userLocationMarker && college.lat && college.lng) {
-                const userLatLng = userLocationMarker.getLatLng();
-                const distance = calculateDistance(userLatLng.lat, userLatLng.lng, college.lat, college.lng);
+            if (userLat && userLng && college.lat && college.lng) {
+                const distance = calculateDistance(userLat, userLng, college.lat, college.lng);
                 distanceText = Math.round(distance) + ' miles away';
             }
             

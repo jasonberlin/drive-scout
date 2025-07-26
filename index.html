@@ -1389,6 +1389,16 @@
                 distanceText = '<div style="color: #666; font-size: 0.9rem; line-height: 1.3; margin-bottom: 4px;">' + Math.round(distance) + ' miles away</div>';
             }
             
+            // Create Mobilize URL with pre-populated fields
+            const district = college.district || 'Unknown';
+            const collegeName = college.name || 'College';
+            const state = district.split('-')[0] || 'XX'; // Extract state from district (e.g., "CA" from "CA-27")
+            const districtCode = district.replace('-', ''); // Convert "CA-27" to "CA27"
+            
+            const mobilizeTitle = encodeURIComponent(district + ' - ' + collegeName + ' - Register Democrats to save the world!');
+            const mobilizeTags = encodeURIComponent('Drive,CA,' + districtCode);
+            const mobilizeURL = 'https://www.mobilize.us/dashboard/ft6/event-campaign/699/?title=' + mobilizeTitle + '&tags=' + mobilizeTags;
+            
             div.innerHTML = '<div class="college-name">' + college.name + '</div>' +
                 '<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">' +
                     '<div style="flex: 1;">' +
@@ -1403,7 +1413,7 @@
                 '<div class="college-actions">' +
                     '<a href="https://www.google.com/maps/search/' + encodeURIComponent((college.streetAddress || college.address || college.name) + ', ' + (college.city || college.addressCity || '') + ', ' + (college.state || '')) + '" target="_blank" class="btn btn-primary">🗺️ Directions</a>' +
                     '<button class="btn btn-secondary" onclick="focusOnCollege(' + college.lat + ', ' + college.lng + ')">📍 Show on Map</button>' +
-                    '<a href="https://www.mobilize.us/dashboard/ft6/event-campaign/699/" target="_blank" class="btn btn-tertiary">🗳️ Set Up Voter Drive</a>' +
+                    '<a href="' + mobilizeURL + '" target="_blank" class="btn btn-tertiary">🗳️ Set Up Voter Drive</a>' +
                 '</div>';
 
             return div;

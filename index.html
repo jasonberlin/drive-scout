@@ -1141,7 +1141,8 @@
                 
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     attribution: '© OpenStreetMap contributors',
-                    maxZoom: 18
+                    maxZoom: 15,
+                    minZoom: 6
                 }).addTo(map);
 
                 setupLocationButton();
@@ -1459,10 +1460,10 @@
                 // Color code based on party and action if this is a swing district
                 if (districtInfo) {
                     if (districtInfo.action === 'FLIP') {
-                        color = '#FF6B35'; // Orange for flip districts
+                        color = '#DC143C'; // Red for flip districts (targeting Republicans)
                         weight = 3;
                     } else if (districtInfo.action === 'HOLD') {
-                        color = districtInfo.party === 'D' ? '#4169E1' : '#DC143C'; // Blue for Dem, Red for Rep
+                        color = districtInfo.party === 'D' ? '#4169E1' : '#DC143C'; // Blue for Dem holds
                         weight = 3;
                     }
                     opacity = 0.6; // Higher opacity for swing districts
@@ -1501,7 +1502,7 @@
                 
                 if (districtInfo) {
                     const partyColor = districtInfo.party === 'D' ? '#4169E1' : '#DC143C';
-                    const actionColor = districtInfo.action === 'FLIP' ? '#FF6B35' : '#4CAF50';
+                    const actionColor = districtInfo.action === 'FLIP' ? '#DC143C' : '#4CAF50';
                     
                     popupContent += '<div style="margin-bottom: 4px;"><strong>Representative:</strong> ' + districtInfo.rep + '</div>';
                     popupContent += '<div style="margin-bottom: 8px;">';

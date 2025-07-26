@@ -1539,10 +1539,15 @@
                 });
             }
             
-            // Add the district boundaries to the map
+            // Add the district boundaries to the map - ONLY SHOW SWING DISTRICTS
             map.districtLayer = L.geoJSON(districtBoundaries.data, {
                 style: districtStyle,
-                onEachFeature: onEachDistrict
+                onEachFeature: onEachDistrict,
+                filter: function(feature) {
+                    // Only show districts that are in our swing district data
+                    const districtId = getDistrictId(feature);
+                    return districtData.hasOwnProperty(districtId);
+                }
             }).addTo(map);
             
             // Zoom to fit the selected district if specified

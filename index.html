@@ -220,13 +220,13 @@
             background: transparent;
             border-radius: 15px;
             padding: 0 0 25px 0 !important;
-            margin: -5px 0 0 0 !important;
+            margin: -3px 0 0 0 !important;
             box-shadow: none;
         }
 
         /* FORCE override any spacing on college list */
         #collegeList {
-            margin: -5px 0 0 0 !important;
+            margin: -3px 0 0 0 !important;
             padding: 0 0 25px 0 !important;
         }
 
@@ -1276,12 +1276,26 @@
             const container = document.getElementById('collegeItems');
             container.innerHTML = '';
 
+            // Sort colleges by distance if user location is available
+            function sortCollegesByDistance(colleges) {
+                if (!userLocationMarker) return colleges;
+                
+                const userLatLng = userLocationMarker.getLatLng();
+                return colleges.slice().sort((a, b) => {
+                    if (!a.lat || !a.lng || !b.lat || !b.lng) return 0;
+                    const distanceA = calculateDistance(userLatLng.lat, userLatLng.lng, a.lat, a.lng);
+                    const distanceB = calculateDistance(userLatLng.lat, userLatLng.lng, b.lat, b.lng);
+                    return distanceA - distanceB;
+                });
+            }
+
             if (withinColleges.length > 0) {
                 const withinSection = document.createElement('div');
                 withinSection.innerHTML = '<h2 style="margin-bottom: 20px; color: white; border-bottom: 2px solid #667eea; padding-bottom: 10px;">COLLEGES IN ' + district + '</h2>';
                 container.appendChild(withinSection);
 
-                withinColleges.forEach(function(college) {
+                const sortedWithinColleges = sortCollegesByDistance(withinColleges);
+                sortedWithinColleges.forEach(function(college) {
                     const collegeElement = createCollegeElement(college);
                     container.appendChild(collegeElement);
                 });
@@ -1292,7 +1306,8 @@
                 nearSection.innerHTML = '<h2 style="margin: 40px 0 20px 0; color: white; border-bottom: 2px solid #764ba2; padding-bottom: 10px;">COLLEGES NEAR ' + district + '</h2>';
                 container.appendChild(nearSection);
 
-                nearColleges.forEach(function(college) {
+                const sortedNearColleges = sortCollegesByDistance(nearColleges);
+                sortedNearColleges.forEach(function(college) {
                     const collegeElement = createCollegeElement(college, true);
                     container.appendChild(collegeElement);
                 });
@@ -1307,10 +1322,19 @@
                 college.streetAddress + '<br>' + (college.city || college.addressCity || '') + ', ' + (college.state || '') + ' ' + (college.zipCode || '') :
                 (college.address || 'Address not available');
             
+            // Calculate distance if user location is available
+            let distanceText = '';
+            if (userLocationMarker && college.lat && college.lng) {
+                const userLatLng = userLocationMarker.getLatLng();
+                const distance = calculateDistance(userLatLng.lat, userLatLng.lng, college.lat, college.lng);
+                distanceText = Math.round(distance) + ' miles away';
+            }
+            
             div.innerHTML = '<div class="college-name">' + college.name + '</div>' +
                 '<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">' +
                     '<div style="color: #666; font-size: 0.9rem; line-height: 1.3; flex: 1;">' + addressDisplay + '</div>' +
                     '<div style="margin-left: 20px; flex-shrink: 0; text-align: right;">' +
+                        (distanceText ? '<div style="font-size: 0.8rem; color: #999; margin-bottom: 2px;">' + distanceText + '</div>' : '') +
                         '<div style="font-size: 0.8rem; color: #666; font-weight: 600; margin-bottom: 2px;">VOTER DRIVE SUITABILITY:</div>' +
                         '<span class="suitability-badge suitability-' + college.suitability.toLowerCase() + '">' + college.suitability + '</span>' +
                     '</div>' +

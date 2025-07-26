@@ -1397,7 +1397,16 @@
             
             const mobilizeTitle = encodeURIComponent(district + ' - ' + collegeName + ' - Register Democrats to save the world!');
             const mobilizeTags = encodeURIComponent('Drive,CA,' + districtCode);
-            const mobilizeURL = 'https://www.mobilize.us/dashboard/ft6/event-campaign/699/?title=' + mobilizeTitle + '&tags=' + mobilizeTags;
+            
+            // Try multiple parameter variations that Mobilize might recognize
+            const mobilizeURL = 'https://www.mobilize.us/dashboard/ft6/event-campaign/699/?' + 
+                'default_title=' + mobilizeTitle + 
+                '&title=' + mobilizeTitle +
+                '&event_title=' + mobilizeTitle +
+                '&name=' + mobilizeTitle +
+                '&tags=' + mobilizeTags +
+                '&default_tags=' + mobilizeTags +
+                '&tag_options=' + mobilizeTags;
             
             div.innerHTML = '<div class="college-name">' + college.name + '</div>' +
                 '<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">' +

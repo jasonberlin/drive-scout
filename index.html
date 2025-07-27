@@ -1929,18 +1929,110 @@
             const title = district + ' - ' + collegeName + ' - Register Democrats to save the world!';
             const tags = 'Drive,CA,' + districtCode;
             
+            console.log('🚀 Drive Scout: Opening Mobilize with auto-fill data:', { title, tags });
+            
             // Open Mobilize in a new tab
             const mobilizeWindow = window.open('https://www.mobilize.us/dashboard/ft6/event-campaign/699/', '_blank');
             
-            // Store the data globally so the new window can access it
-            window.mobilizeAutoFillData = { title, tags };
+            // Attempt direct auto-fill (might be blocked by CORS)
+            if (mobilizeWindow) {
+                console.log('✅ Mobilize window opened, attempting auto-fill...');
+                
+                // Try multiple timing approaches
+                const attempts = [500, 1000, 2000, 3000, 5000]; // Try at different intervals
+                
+                attempts.forEach((delay, index) => {
+                    setTimeout(() => {
+                        try {
+                            console.log(`🔄 Auto-fill attempt ${index + 1} (${delay}ms delay)`);
+                            
+                            // Try to access the mobilize window's document
+                            const doc = mobilizeWindow.document;
+                            
+                            if (doc) {
+                                console.log('🎯 Successfully accessed Mobilize document!');
+                                
+                                // Look for common form field patterns
+                                const titleFields = [
+                                    doc.querySelector('input[name*="title"]'),
+                                    doc.querySelector('input[id*="title"]'),
+                                    doc.querySelector('input[placeholder*="title"]'),
+                                    doc.querySelector('textarea[name*="title"]'),
+                                    doc.querySelector('input[name="default_title"]'),
+                                    doc.querySelector('#default_title'),
+                                    doc.querySelector('[data-testid*="title"]')
+                                ].filter(el => el);
+                                
+                                const tagFields = [
+                                    doc.querySelector('input[name*="tag"]'),
+                                    doc.querySelector('input[id*="tag"]'),
+                                    doc.querySelector('input[placeholder*="tag"]'),
+                                    doc.querySelector('textarea[name*="tag"]'),
+                                    doc.querySelector('[data-testid*="tag"]')
+                                ].filter(el => el);
+                                
+                                console.log('🔍 Found title fields:', titleFields.length);
+                                console.log('🔍 Found tag fields:', tagFields.length);
+                                
+                                // Fill title field
+                                if (titleFields.length > 0) {
+                                    titleFields[0].value = title;
+                                    titleFields[0].dispatchEvent(new Event('input', { bubbles: true }));
+                                    titleFields[0].dispatchEvent(new Event('change', { bubbles: true }));
+                                    console.log('✅ Title filled:', title);
+                                }
+                                
+                                // Fill tag field
+                                if (tagFields.length > 0) {
+                                    tagFields[0].value = tags;
+                                    tagFields[0].dispatchEvent(new Event('input', { bubbles: true }));
+                                    tagFields[0].dispatchEvent(new Event('change', { bubbles: true }));
+                                    console.log('✅ Tags filled:', tags);
+                                }
+                                
+                                // If we successfully filled fields, stop trying
+                                if (titleFields.length > 0 || tagFields.length > 0) {
+                                    console.log('🎉 Auto-fill successful!');
+                                    return;
+                                }
+                            }
+                            
+                        } catch (error) {
+                            console.log(`❌ Auto-fill attempt ${index + 1} failed:`, error.message);
+                            
+                            // If this is the last attempt and we're still getting CORS errors,
+                            // try the postMessage approach
+                            if (index === attempts.length - 1) {
+                                console.log('🔄 Trying postMessage approach...');
+                                tryPostMessageApproach(mobilizeWindow, title, tags);
+                            }
+                        }
+                    }, delay);
+                });
+                
+            } else {
+                console.log('❌ Failed to open Mobilize window (popup blocked?)');
+            }
+        }
+        
+        function tryPostMessageApproach(mobilizeWindow, title, tags) {
+            // Send data via postMessage (works across origins)
+            const message = {
+                type: 'DRIVE_SCOUT_AUTO_FILL',
+                data: { title, tags }
+            };
             
-            // Instructions for the user
-            setTimeout(() => {
-                alert('Drive Scout Tip: After the Mobilize form loads, look for:\n\n' +
-                      '📝 Default title: Paste this text:\n"' + title + '"\n\n' +
-                      '🏷️ Tag options: Add these tags:\n"Drive", "CA", "' + districtCode + '"');
-            }, 1000);
+            try {
+                mobilizeWindow.postMessage(message, 'https://www.mobilize.us');
+                console.log('📤 Sent postMessage to Mobilize window:', message);
+                
+                // We would need Mobilize to have a listener for this message
+                // This is a long shot, but worth trying
+                
+            } catch (error) {
+                console.log('❌ postMessage failed:', error.message);
+                console.log('💡 Auto-fill not possible due to security restrictions');
+            }
         }
 
         // Initialize the app when the page loads

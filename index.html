@@ -1389,17 +1389,30 @@
                 distanceText = '<div style="color: #666; font-size: 0.9rem; line-height: 1.3; margin-bottom: 4px;">' + Math.round(distance) + ' miles away</div>';
             }
             
-            // Create Mobilize URL with pre-populated fields
+            // Create Mobilize URL with auto-fill data passed via URL hash
             const district = college.district || 'Unknown';
             const collegeName = college.name || 'College';
             const state = district.split('-')[0] || 'XX'; // Extract state from district (e.g., "CA" from "CA-27")
             const districtCode = district.replace('-', ''); // Convert "CA-27" to "CA27"
             
-            const eventDescription = encodeURIComponent('College voter registration drive in swing district ' + district + ' at ' + collegeName + '. Help us register Democrats to save the world!');
+            const autoFillData = {
+                title: district + ' - ' + collegeName + ' - Register Democrats to save the world!',
+                tags: 'Drive,CA,' + districtCode
+            };
             
-            // Try the documented URL parameters for event creation
-            const mobilizeURL = 'https://www.mobilize.us/dashboard/ft6/event-campaign/699/?' + 
-                'event_description=' + eventDescription;
+            // Encode the data and pass via URL hash (after #)
+            const encodedData = encodeURIComponent(JSON.stringify(autoFillData));
+            const mobilizeURL = 'https://www.mobilize.us/dashboard/ft6/event-campaign/699/#autofill=' + encodedData;
+            
+            // Custom function to open Mobilize and auto-fill
+            const openMobilizeWithAutoFill = `
+                window.open('${mobilizeURL}', '_blank');
+                setTimeout(() => {
+                    // Try to access the opened window and inject our script
+                    // Note: This may be blocked by CORS, but worth trying
+                    console.log('Drive Scout: Attempting to auto-fill Mobilize form...');
+                }, 2000);
+            `;
             
             div.innerHTML = '<div class="college-name">' + college.name + '</div>' +
                 '<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">' +
@@ -1415,7 +1428,7 @@
                 '<div class="college-actions">' +
                     '<a href="https://www.google.com/maps/search/' + encodeURIComponent((college.streetAddress || college.address || college.name) + ', ' + (college.city || college.addressCity || '') + ', ' + (college.state || '')) + '" target="_blank" class="btn btn-primary">🗺️ Directions</a>' +
                     '<button class="btn btn-secondary" onclick="focusOnCollege(' + college.lat + ', ' + college.lng + ')">📍 Show on Map</button>' +
-                    '<a href="' + mobilizeURL + '" target="_blank" class="btn btn-tertiary">🗳️ Set Up Voter Drive</a>' +
+                    '<button class="btn btn-tertiary" onclick="openMobilizeWithAutoFill(\'' + district + '\', \'' + collegeName.replace(/'/g, "\\'") + '\', \'' + state + '\', \'' + districtCode + '\')">🗳️ Set Up Voter Drive</button>' +
                 '</div>';
 
             return div;
@@ -1909,6 +1922,25 @@
             } else {
                 college.streetAddress = address;
             }
+        }
+
+        function openMobilizeWithAutoFill(district, collegeName, state, districtCode) {
+            // Prepare the auto-fill data
+            const title = district + ' - ' + collegeName + ' - Register Democrats to save the world!';
+            const tags = 'Drive,CA,' + districtCode;
+            
+            // Open Mobilize in a new tab
+            const mobilizeWindow = window.open('https://www.mobilize.us/dashboard/ft6/event-campaign/699/', '_blank');
+            
+            // Store the data globally so the new window can access it
+            window.mobilizeAutoFillData = { title, tags };
+            
+            // Instructions for the user
+            setTimeout(() => {
+                alert('Drive Scout Tip: After the Mobilize form loads, look for:\n\n' +
+                      '📝 Default title: Paste this text:\n"' + title + '"\n\n' +
+                      '🏷️ Tag options: Add these tags:\n"Drive", "CA", "' + districtCode + '"');
+            }, 1000);
         }
 
         // Initialize the app when the page loads

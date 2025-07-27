@@ -1929,110 +1929,146 @@
             const title = district + ' - ' + collegeName + ' - Register Democrats to save the world!';
             const tags = 'Drive,CA,' + districtCode;
             
-            console.log('🚀 Drive Scout: Opening Mobilize with auto-fill data:', { title, tags });
+            console.log('🚀 Drive Scout: Preparing clipboard data:', { title, tags });
             
-            // Open Mobilize in a new tab
-            const mobilizeWindow = window.open('https://www.mobilize.us/dashboard/ft6/event-campaign/699/', '_blank');
-            
-            // Attempt direct auto-fill (might be blocked by CORS)
-            if (mobilizeWindow) {
-                console.log('✅ Mobilize window opened, attempting auto-fill...');
+            // Copy title to clipboard first
+            copyToClipboard(title).then(() => {
+                console.log('📋 Title copied to clipboard');
                 
-                // Try multiple timing approaches
-                const attempts = [500, 1000, 2000, 3000, 5000]; // Try at different intervals
+                // Open Mobilize in new tab
+                const mobilizeWindow = window.open('https://www.mobilize.us/dashboard/ft6/event-campaign/699/', '_blank');
                 
-                attempts.forEach((delay, index) => {
-                    setTimeout(() => {
-                        try {
-                            console.log(`🔄 Auto-fill attempt ${index + 1} (${delay}ms delay)`);
-                            
-                            // Try to access the mobilize window's document
-                            const doc = mobilizeWindow.document;
-                            
-                            if (doc) {
-                                console.log('🎯 Successfully accessed Mobilize document!');
-                                
-                                // Look for common form field patterns
-                                const titleFields = [
-                                    doc.querySelector('input[name*="title"]'),
-                                    doc.querySelector('input[id*="title"]'),
-                                    doc.querySelector('input[placeholder*="title"]'),
-                                    doc.querySelector('textarea[name*="title"]'),
-                                    doc.querySelector('input[name="default_title"]'),
-                                    doc.querySelector('#default_title'),
-                                    doc.querySelector('[data-testid*="title"]')
-                                ].filter(el => el);
-                                
-                                const tagFields = [
-                                    doc.querySelector('input[name*="tag"]'),
-                                    doc.querySelector('input[id*="tag"]'),
-                                    doc.querySelector('input[placeholder*="tag"]'),
-                                    doc.querySelector('textarea[name*="tag"]'),
-                                    doc.querySelector('[data-testid*="tag"]')
-                                ].filter(el => el);
-                                
-                                console.log('🔍 Found title fields:', titleFields.length);
-                                console.log('🔍 Found tag fields:', tagFields.length);
-                                
-                                // Fill title field
-                                if (titleFields.length > 0) {
-                                    titleFields[0].value = title;
-                                    titleFields[0].dispatchEvent(new Event('input', { bubbles: true }));
-                                    titleFields[0].dispatchEvent(new Event('change', { bubbles: true }));
-                                    console.log('✅ Title filled:', title);
-                                }
-                                
-                                // Fill tag field
-                                if (tagFields.length > 0) {
-                                    tagFields[0].value = tags;
-                                    tagFields[0].dispatchEvent(new Event('input', { bubbles: true }));
-                                    tagFields[0].dispatchEvent(new Event('change', { bubbles: true }));
-                                    console.log('✅ Tags filled:', tags);
-                                }
-                                
-                                // If we successfully filled fields, stop trying
-                                if (titleFields.length > 0 || tagFields.length > 0) {
-                                    console.log('🎉 Auto-fill successful!');
-                                    return;
-                                }
-                            }
-                            
-                        } catch (error) {
-                            console.log(`❌ Auto-fill attempt ${index + 1} failed:`, error.message);
-                            
-                            // If this is the last attempt and we're still getting CORS errors,
-                            // try the postMessage approach
-                            if (index === attempts.length - 1) {
-                                console.log('🔄 Trying postMessage approach...');
-                                tryPostMessageApproach(mobilizeWindow, title, tags);
-                            }
-                        }
-                    }, delay);
-                });
+                // Show helpful notification with both pieces of info
+                showClipboardNotification(title, tags);
                 
+            }).catch(error => {
+                console.log('❌ Clipboard copy failed:', error);
+                // Still open Mobilize even if clipboard fails
+                window.open('https://www.mobilize.us/dashboard/ft6/event-campaign/699/', '_blank');
+                showFallbackNotification(title, tags);
+            });
+        }
+        
+        async function copyToClipboard(text) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                // Modern clipboard API
+                return navigator.clipboard.writeText(text);
             } else {
-                console.log('❌ Failed to open Mobilize window (popup blocked?)');
+                // Fallback for older browsers
+                return new Promise((resolve, reject) => {
+                    const textArea = document.createElement('textarea');
+                    textArea.value = text;
+                    textArea.style.position = 'fixed';
+                    textArea.style.left = '-999999px';
+                    textArea.style.top = '-999999px';
+                    document.body.appendChild(textArea);
+                    textArea.focus();
+                    textArea.select();
+                    
+                    try {
+                        const successful = document.execCommand('copy');
+                        document.body.removeChild(textArea);
+                        if (successful) {
+                            resolve();
+                        } else {
+                            reject(new Error('Copy command failed'));
+                        }
+                    } catch (err) {
+                        document.body.removeChild(textArea);
+                        reject(err);
+                    }
+                });
             }
         }
         
-        function tryPostMessageApproach(mobilizeWindow, title, tags) {
-            // Send data via postMessage (works across origins)
-            const message = {
-                type: 'DRIVE_SCOUT_AUTO_FILL',
-                data: { title, tags }
-            };
+        function showClipboardNotification(title, tags) {
+            // Create a modern notification overlay
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: linear-gradient(135deg, #4CAF50, #45a049);
+                color: white;
+                padding: 20px 25px;
+                border-radius: 12px;
+                box-shadow: 0 8px 32px rgba(76, 175, 80, 0.3);
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                font-size: 14px;
+                line-height: 1.4;
+                max-width: 400px;
+                z-index: 10000;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                border: 2px solid rgba(255,255,255,0.2);
+            `;
             
-            try {
-                mobilizeWindow.postMessage(message, 'https://www.mobilize.us');
-                console.log('📤 Sent postMessage to Mobilize window:', message);
-                
-                // We would need Mobilize to have a listener for this message
-                // This is a long shot, but worth trying
-                
-            } catch (error) {
-                console.log('❌ postMessage failed:', error.message);
-                console.log('💡 Auto-fill not possible due to security restrictions');
-            }
+            notification.innerHTML = `
+                <div style="font-weight: bold; margin-bottom: 8px; font-size: 16px;">
+                    🎉 Ready for Mobilize!
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <strong>📋 Title copied to clipboard!</strong><br>
+                    <span style="opacity: 0.9; font-size: 13px;">Paste with Ctrl+V (or Cmd+V)</span>
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <strong>🏷️ Tags to add:</strong><br>
+                    <code style="background: rgba(255,255,255,0.2); padding: 2px 6px; border-radius: 4px; font-size: 13px;">${tags}</code>
+                </div>
+                <div style="font-size: 12px; opacity: 0.8; text-align: center; margin-top: 12px;">
+                    Click to copy tags • Auto-closes in 8 seconds
+                </div>
+            `;
+            
+            // Click to copy tags
+            notification.addEventListener('click', () => {
+                copyToClipboard(tags).then(() => {
+                    notification.innerHTML = `
+                        <div style="text-align: center;">
+                            <div style="font-weight: bold; margin-bottom: 8px; font-size: 16px;">
+                                ✅ Tags copied!
+                            </div>
+                            <div style="font-size: 13px; opacity: 0.9;">
+                                Ready to paste: <code style="background: rgba(255,255,255,0.2); padding: 2px 6px; border-radius: 4px;">${tags}</code>
+                            </div>
+                        </div>
+                    `;
+                    setTimeout(() => {
+                        notification.style.opacity = '0';
+                        setTimeout(() => notification.remove(), 300);
+                    }, 2000);
+                }).catch(() => {
+                    // If copy fails, at least show the tags clearly
+                    alert('Tags to add: ' + tags);
+                });
+            });
+            
+            // Hover effects
+            notification.addEventListener('mouseenter', () => {
+                notification.style.transform = 'translateY(-2px)';
+                notification.style.boxShadow = '0 12px 40px rgba(76, 175, 80, 0.4)';
+            });
+            
+            notification.addEventListener('mouseleave', () => {
+                notification.style.transform = 'translateY(0)';
+                notification.style.boxShadow = '0 8px 32px rgba(76, 175, 80, 0.3)';
+            });
+            
+            document.body.appendChild(notification);
+            
+            // Auto-remove after 8 seconds
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.remove();
+                    }
+                }, 300);
+            }, 8000);
+        }
+        
+        function showFallbackNotification(title, tags) {
+            alert(`Drive Scout: Copy this info to Mobilize:\n\n📝 Title:\n${title}\n\n🏷️ Tags:\n${tags}`);
         }
 
         // Initialize the app when the page loads
